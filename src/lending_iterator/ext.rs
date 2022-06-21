@@ -86,7 +86,7 @@ where
     F : for<'n> FnMut([&'n (); 0], <I as LendingIterator>::Item<'n>) -> A!(NewItemType<'n>),
 {
     iter: I,
-    new_item_type: NewItemType,
+    new_item_type: PhantomData<NewItemType>,
     f: F,
 }
 
@@ -102,7 +102,7 @@ where
     ,
 {
     iter: I,
-    new_item_type: NewItemType,
+    new_item_type: PhantomData<NewItemType>,
     f: F,
 }
 

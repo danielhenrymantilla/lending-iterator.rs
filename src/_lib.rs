@@ -17,7 +17,7 @@ extern crate nougat;
 extern crate polonius_the_crab;
 
 pub
-mod helpers;
+mod higher_kinded_types;
 
 pub
 mod lending_iterator;

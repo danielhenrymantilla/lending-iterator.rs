@@ -8,7 +8,7 @@ use {
     },
     // ::polonius_the_crab::{HKT, WithLifetime},
     crate::{
-        helpers::{*, Apply as A},
+        higher_kinded_types::{*, Apply as A},
         utils::{
             FnMutOption,
         },
@@ -33,14 +33,14 @@ trait LendingIterator {
     ) -> Option<Self::Item<'_>>
     ;
 
-    fn lending<NewItemType : HKT> (self, new_item_type: NewItemType)
+    fn lending<NewItemType : HKT> (self)
       -> Lending<Self, NewItemType>
     where
         Self : Sized,
     {
         Lending {
             iter: self,
-            new_item_type,
+            new_item_type: <_>::default(),
         }
     }
 
@@ -57,7 +57,7 @@ trait LendingIterator {
 pub
 struct Lending<I : LendingIterator, NewItemType : HKT> {
     iter: I,
-    new_item_type: NewItemType,
+    new_item_type: PhantomData<NewItemType>,
 }
 
 /// `generic_associated_types`-agnostic shorthand for
@@ -66,15 +66,17 @@ pub
 type Item<'lt, I> = Gat!(<I as LendingIterator>::Item<'lt>);
 
 pub
-struct FromFnBuilder<ItemType : HKT>(ItemType);
+struct FromFnBuilder<ItemType : HKT>(
+    PhantomData<ItemType>,
+);
 
 #[must_use = "missing `.iter_from_fn()` call"]
 pub
 fn lending_iterator<ItemType : HKT> (
-    item_type: ItemType,
+    // item_type: ItemType,
 ) -> FromFnBuilder<ItemType>
 {
-    FromFnBuilder(item_type)
+    FromFnBuilder(<_>::default())
 }
 
 impl<Item : HKT> FromFnBuilder<Item> {
@@ -132,11 +134,13 @@ where
 //     PhantomData::< dyn for<$lt> WithLifetime<$lt, T = $T> >
 // )}
 
+#[macro_export]
 macro_rules! lending {(
     < $lt:lifetime > $T:ty $(,)?
 ) => (
-    lending_iterator($crate::HKT!(<$lt> $T))
+    lending_iterator::<$crate::HKT!(<$lt> $T)>()
 )}
+pub use lending;
 
 #[test]
 fn inlined_windows_mut ()
@@ -145,17 +149,17 @@ fn inlined_windows_mut ()
     let slice = &mut array[..];
     let mut start = 0;
     let mut window_iter =
-        lending_iterator(HKT!(<'n> &'n mut [u8]))
+        lending!(<'n> &'n mut [u8])
             .iter_from_fn(slice, |it| Some(it))
 
-            .lending(HKT!(<'n> &'n mut [u8]))
+            .lending::<HKT!(<'n> &'n mut [u8])>()
             .and_then(|[], slice| Some({
                 let to_yield = slice.get_mut(start ..)?.get_mut(..2)?;
                 start += 1;
                 to_yield
             }))
 
-            .lending(HKT!(<'n> &'n mut [u8; 2]))
+            .lending::<HKT!(<'n> &'n mut [u8; 2])>()
             .map(|[], slice| slice.try_into().unwrap())
 
             .filter(|&&mut [fst, _]| fst != 0)
