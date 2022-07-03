@@ -31,7 +31,7 @@ where
 /// ```rust
 /// use ::lending_iterator::higher_kinded_types::{HKT, WithLifetime};
 ///
-/// type StringRef = HKT!(<'lt> &'lt str);
+/// type StringRef = HKT!(<'lt> => &'lt str);
 ///
 /// fn example<'s>(s: <StringRef as WithLifetime<'s>>::T) -> &'s str {
 ///     s
@@ -76,7 +76,7 @@ for
 #[macro_export]
 macro_rules! HKT {
     (
-        <$lt:lifetime> $T:ty $(,)?
+        <$lt:lifetime> => $T:ty $(,)?
     ) => (
         $crate::ඞ::PhantomData::<
             dyn for<$lt> $crate::higher_kinded_types::WithLifetime<$lt, T = $T>
@@ -91,7 +91,7 @@ macro_rules! HKT {
 /// ```rust
 /// use ::lending_iterator::higher_kinded_types::{HKT, Feed};
 ///
-/// type StrRef = HKT!(<'lt> &'lt str);
+/// type StrRef = HKT!(<'lt> => &'lt str);
 ///
 /// const EXAMPLE: Feed<'static, /* to */ StrRef> = "This is a `&'static str`";
 /// ```
@@ -110,7 +110,7 @@ type Feed<'lt, T : ?Sized + HKT> = <T as WithLifetime<'lt>>::T;
 /// ```rust
 /// use ::lending_iterator::higher_kinded_types::{HKT, Apply};
 ///
-/// type StrRef = HKT!(<'lt> &'lt str);
+/// type StrRef = HKT!(<'lt> => &'lt str);
 ///
 /// const EXAMPLE: Apply!(StrRef<'static>) = "This is a `&'static str`";
 /// ```
@@ -164,9 +164,6 @@ macro_rules! Apply {
         }
     );
 }
-
-type Foo<T> = HKT!(<'lt> T);
-type Bar = Apply!(Foo<()>,<'static>);
 
 #[doc(hidden)] /** Not part of the public API */ #[macro_export]
 macro_rules! ඞ_munch_Apply {
