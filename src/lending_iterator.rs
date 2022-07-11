@@ -3,272 +3,441 @@ use {
         marker::PhantomData,
         ops::Not,
     },
+    ::never_say_never::{
+        Never as ǃ,
+    },
     ::nougat::{
         *,
     },
-    // ::polonius_the_crab::{HKT, WithLifetime},
     crate::{
         higher_kinded_types::{*, Apply as A},
-        utils::{
-            FnMutOption,
-        },
     },
-    // self::ext::{
-    //     LendingIteratorExt,
-    // },
+    self::{
+        adapters::*,
+    }
 };
 
-mod ext;
-
-#[gat]
+#[path = "lending_iterator/adapters/_mod.rs"]
 pub
-trait LendingIterator {
-    type Item<'next>
-    where
-        Self : 'next,
-    ;
+mod adapters;
 
-    fn next (
-        self: &'_ mut Self,
-    ) -> Option<Self::Item<'_>>
-    ;
+mod impls;
 
-    fn lending<NewItemType : HKT> (self)
-      -> Lending<Self, NewItemType>
-    where
-        Self : Sized,
-    {
-        Lending {
-            iter: self,
-            new_item_type: <_>::default(),
-        }
-    }
+#[cfg(test)]
+mod tests;
 
-    fn filter<F> (self, should_yield: F)
-      -> ext::Filter<Self, F>
-    where
-        Self : Sized,
-        F : FnMut(&'_ Self::Item<'_>) -> bool,
-    {
-        ext::Filter { iter: self, should_yield }
-    }
-}
-
-pub
-struct Lending<I : LendingIterator, NewItemType : HKT> {
-    iter: I,
-    new_item_type: PhantomData<NewItemType>,
-}
-
+#[allow(type_alias_bounds)]
 /// `generic_associated_types`-agnostic shorthand for
 /// <code>\<I as [LendingIterator]\>::Item\<\'lt\></code>
 pub
-type Item<'lt, I> = Gat!(<I as LendingIterator>::Item<'lt>);
+type Item<'lt, I : LendingIterator> =
+    Gat!(<I as LendingIterator>::Item<'lt>)
+;
 
 pub
-struct FromFnBuilder<ItemType : HKT>(
-    PhantomData<ItemType>,
-);
-
-#[must_use = "missing `.iter_from_fn()` call"]
-pub
-fn lending_iterator<ItemType : HKT> (
-    // item_type: ItemType,
-) -> FromFnBuilder<ItemType>
-{
-    FromFnBuilder(<_>::default())
-}
-
-impl<Item : HKT> FromFnBuilder<Item> {
-    pub
-    fn iter_from_fn<State, Next> (
-        self: Self,
-        state: State,
-        next: Next,
-    ) -> FromFn<State, Item, Next>
-    where
-        Next : FnMut(&'_ mut State) -> Option< A!(Item<'_>) >,
-    {
-        FromFn { state, item_type: <_>::default(), next }
-    }
-}
-
-pub
-struct FromFn<State, Item, Next>
-where
-    Item : HKT,
-    Next : FnMut(&'_ mut State) -> Option< A!(Item<'_>) >,
-{
+fn lending_iter_from_fn<ItemType, State, Next> (
     state: State,
-    item_type: PhantomData<fn() -> Item>,
     next: Next,
-}
-
-#[gat]
-impl<State, Item, Next>
-    LendingIterator
-for
-    FromFn<State, Item, Next>
+) -> FromFn<State, ItemType, Next>
 where
-    Item : HKT,
-    Next : FnMut(&'_ mut State) -> Option< A!(Item<'_>) >,
+    ItemType : HKT,
+    Next : FnMut(&'_ mut State) -> Option< A!(ItemType<'_>) >,
 {
-    type Item<'next>
+    FromFn { state, item_type: <_>::default(), next }
+}
+
+#[cfg_attr(feature = "better-docs",
+    doc(notable_trait),
+)]
+pub trait LendingIteratorඞItem<'next, Bounds = &'next Self> {
+    type T;
+}
+
+// #[gat]
+pub
+trait LendingIterator : for<'next> LendingIteratorඞItem<'next> {
+    // type Item<'next>
+    // where
+    //     Self : 'next,
+    // ;
+
+    fn next (
+        self: &'_ mut Self,
+    ) -> Option<Item<'_, Self>>
+    ;
+
+    fn filter<F> (
+        self: Self,
+        should_yield: F,
+    ) -> Filter<Self, F>
     where
-        Self : 'next,
-    =
-        A!(Item<'next>)
-    ;
-
-    fn next (self: &'_ mut FromFn<State, Item, Next>)
-      -> Option< A!(Item<'_>) >
+        Self : Sized,
+        F : FnMut(&'_ Item<'_, Self>) -> bool,
     {
-        let Self { state, next, .. } = self;
-        next(state)
+        Filter { iter: self, should_yield }
+    }
+
+    fn try_fold<Acc, Err> (
+        self: &'_ mut Self,
+        mut acc: Acc,
+        mut f: impl FnMut(Acc, Item<'_, Self>) -> Result<Acc, Err>,
+    ) -> Result<Acc, Err>
+    {
+        while let Some(item) = self.next() {
+            acc = f(acc, item)?;
+        }
+        Ok(acc)
+    }
+
+    fn try_for_each<Err> (
+        self: &'_ mut Self,
+        mut f: impl FnMut(Item<'_, Self>) -> Result<(), Err>,
+    ) -> Result<(), Err>
+    {
+        self.try_fold((), |(), item| f(item))
+    }
+
+    fn fold<Acc> (
+        mut self: Self,
+        acc: Acc,
+        mut f: impl FnMut(Acc, Item<'_, Self>) -> Acc,
+    ) -> Acc
+    where
+        Self : Sized,
+    {
+        self.try_fold(acc, |acc, item| Ok::<_, ǃ>(f(acc, item)))
+            .unwrap_or_else(|unreachable: ǃ| match unreachable {})
+    }
+
+    fn for_each<> (
+        self: Self,
+        mut f: impl FnMut(Item<'_, Self>),
+    )
+    where
+        Self : Sized,
+    {
+        self.fold((), |(), item| f(item))
+    }
+
+    fn all<> (
+        self: &'_ mut Self,
+        mut predicate: impl FnMut(Item<'_, Self>) -> bool,
+    ) -> bool
+    where
+        Self : Sized,
+    {
+        self.try_for_each(
+                |item| if predicate(item) {
+                    Ok(())
+                } else {
+                    Err(())
+                },
+            )
+            .is_ok()
+    }
+
+    fn any<> (
+        self: &'_ mut Self,
+        mut predicate: impl FnMut(Item<'_, Self>) -> bool,
+    ) -> bool
+    where
+        Self : Sized,
+    {
+        self.all(|item| predicate(item).not())
+            .not()
+    }
+
+    fn by_ref<> (self: &'_ mut Self)
+      -> &'_ mut Self
+    where
+        Self : Sized,
+    {
+        self
+    }
+
+    fn count<> (self: Self)
+      -> usize
+    where
+        Self : Sized,
+    {
+        self.fold(0_usize, |acc, _| acc + 1)
+    }
+
+    fn find<'find> (
+        self: &'find mut Self,
+        mut predicate: impl 'find + FnMut(&Item<'_, Self>) -> bool,
+    ) -> Option<Item<'find, Self>>
+    where
+        Self : Sized,
+    {
+        use ::polonius_the_crab::prelude::*;
+        let mut this = self;
+        polonius_loop!(|this| -> Option<Item<'polonius, Self>> {
+            let ret = this.next();
+            if matches!(ret, Some(ref it) if predicate(it).not()) {
+                polonius_continue!();
+            }
+            polonius_return!(ret);
+        })
+    }
+
+    fn fuse (self: Self)
+      -> Fuse<Self>
+    where
+        Self : Sized,
+        // Skip<Self>
+        //     : for<'next> LendingIterator<Item<'next> = Item<'next, Self>>
+        // ,
+    {
+        Fuse(Some(self))
+    }
+
+    fn nth (
+        self: &'_ mut Self,
+        n: usize,
+    ) -> Option<Item<'_, Self>>
+    {
+        if let Some(n_minus_one) = n.checked_sub(1) {
+            self.skip(n_minus_one);
+        }
+        self.next()
+    }
+
+    fn position<F> (
+        self: &'_ mut Self,
+        mut predicate: impl FnMut(Item<'_, Self>) -> bool,
+    ) -> Option<usize>
+    where
+        Self : Sized,
+    {
+        match
+            self.try_fold(0, |i, item| if predicate(item) {
+                Err(i)
+            } else {
+                Ok(i + 1)
+            })
+        {
+            | Err(position) => Some(position),
+            | Ok(_) => None,
+        }
+    }
+
+    fn skip (
+        self: Self,
+        count: usize,
+    ) -> Skip<Self>
+    where
+        Self : Sized,
+        // Skip<Self>
+        //     : for<'next> LendingIterator<Item<'next> = Item<'next, Self>>
+        // ,
+    {
+        Skip {
+            iter: self,
+            to_skip: count.try_into().ok(),
+        }
+    }
+
+    #[cfg(TODO)]
+    fn skip_while<F> (
+        self: Self,
+        predicate: F,
+    ) -> SkipWhile<Self, F>
+    where
+        F : FnMut(Item<'_, Self>) -> bool,
+        Self : Sized,
+        // SkipWhile<Self, F>
+        //     : for<'next> LendingIterator<Item<'next> = Item<'next, Self>>
+        // ,
+    {
+        SkipWhile { iter: self, predicate }
+    }
+
+    fn take (
+        self: Self,
+        count: usize,
+    ) -> Take<Self>
+    where
+        Self : Sized,
+        // Take<Self>
+        //     : for<'next> LendingIterator<Item<'next> = Item<'next, Self>>
+        // ,
+    {
+        Take {
+            iter: self,
+            remaining: count,
+        }
+    }
+
+    #[cfg(TODO)]
+    fn take_while<F> (
+        self: Self,
+        f: F,
+    ) -> TakeWhile<Self, F>
+    where
+        Self : Sized,
+        F : FnMut(&Self::Item) -> bool,
+        // TakeWhile<Self, F>
+        //     : for<'next> LendingIterator<Item<'next> = Item<'next, Self>>
+        // ,
+    {
+        TakeWhile(self)
+    }
+
+    #[must_use = "call `.with()` to provide the mapping closure"]
+    fn map_lending<NewItemType : HKT> (
+        self: Self,
+        _phantom_ty: NewItemType,
+    ) -> MapLending<Self, NewItemType>
+    where
+        Self : Sized,
+    {
+        MapLending(self, _phantom_ty)
+    }
+
+    #[must_use = "call `.with()` to provide the closure"]
+    fn and_then_lending<NewItemType : HKT> (
+        self: Self,
+        _phantom_ty: NewItemType,
+    ) -> AndThenLending<Self, NewItemType>
+    where
+        Self : Sized,
+    {
+        AndThenLending(self, _phantom_ty)
+    }
+
+    fn map_lending_ref<R, F>(
+        self: Self,
+        f: F,
+    ) -> With<MapLending<Self, HKT!(&R)>, F>
+    where
+        Self : Sized,
+        F : for<'any> FnMut([&'any (); 0], Item<'any, Self>) -> &'any R,
+    {
+        self.map_lending(HKT!(&R))
+            .with(f)
+    }
+
+    fn map_lending_mut<R, F>(
+        self: Self,
+        f: F,
+    ) -> With<MapLending<Self, HKT!(&mut R)>, F>
+    where
+        Self : Sized,
+        F : for<'any> FnMut([&'any (); 0], Item<'any, Self>) -> &'any mut R,
+    {
+        self.map_lending(HKT!(&mut R))
+            .with(f)
+    }
+
+    fn and_then_lending_ref<R, F>(
+        self: Self,
+        f: F,
+    ) -> With<AndThenLending<Self, HKT!(&R)>, F>
+    where
+        Self : Sized,
+        F : for<'any> FnMut([&'any (); 0], Item<'any, Self>) -> Option<&'any R>,
+    {
+        self.and_then_lending(HKT!(&R))
+            .with(f)
+    }
+
+    fn and_then_lending_mut<R, F>(
+        self: Self,
+        f: F,
+    ) -> With<AndThenLending<Self, HKT!(&mut R)>, F>
+    where
+        Self : Sized,
+        F : for<'any> FnMut([&'any (); 0], Item<'any, Self>) -> Option<&'any mut R>,
+    {
+        self.and_then_lending(HKT!(&mut R))
+            .with(f)
     }
 }
 
-// macro_rules! HKT {(
-//     < $lt:lifetime > $T:ty
-// ) => (
-//     PhantomData::< dyn for<$lt> WithLifetime<$lt, T = $T> >
-// )}
-
-#[macro_export]
-macro_rules! lending {(
-    < $lt:lifetime > $T:ty $(,)?
-) => (
-    lending_iterator::<$crate::HKT!(<$lt> $T)>()
-)}
-pub use lending;
-
-#[test]
-fn inlined_windows_mut ()
-{
-    let mut array = [0, 1, 2, 3, 4, 5, 6];
-    let slice = &mut array[..];
-    let mut start = 0;
-    let mut window_iter =
-        lending!(<'n> &'n mut [u8])
-            .iter_from_fn(slice, |it| Some(it))
-
-            .lending::<HKT!(<'n> &'n mut [u8])>()
-            .and_then(|[], slice| Some({
-                let to_yield = slice.get_mut(start ..)?.get_mut(..2)?;
-                start += 1;
-                to_yield
-            }))
-
-            .lending::<HKT!(<'n> &'n mut [u8; 2])>()
-            .map(|[], slice| slice.try_into().unwrap())
-
-            .filter(|&&mut [fst, _]| fst != 0)
-        // lending!(<'n> &'n mut [u8; 2])
-        //     .iter_from_fn(slice, |slice| Some({
-        //         let to_yield = slice.get_mut(start ..)?.get_mut(..2)?;
-        //         start += 1;
-        //         to_yield.try_into().unwrap()
-        //     }))
-    ;
-    while let Some(&mut [fst, ref mut snd]) = window_iter.next() {
-        *snd += fst;
-    }
-    assert_eq!(
-        [0, 1, 3, 6, 10, 15, 21],
-        array,
-    );
-}
-
-// struct Infinite;
-
-// #[gat]
-// impl LendingIterator for Infinite {
-//     type Item<'next>
-//     where
-//         Self : 'next,
-//     =
-//         &'next mut Self
-//     ;
-
-//     fn next (
-//         self: &'_ mut Self,
-//     ) -> Option<&'_ mut Self>
-//     {
-//         Some(self)
-//     }
-// }
-
-// struct WindowsMut<Slice, const WIDTH: usize> {
-//     slice: Slice,
-//     /// This is unfortunately needed for a non-`unsafe` implementation.
-//     start: usize,
-// }
-
-// #[gat]
-// impl<'lt, T, const WIDTH: usize>
-//     LendingIterator
-// for
-//     WindowsMut<&'lt mut [T], WIDTH>
-// {
-//     type Item<'next>
-//     where
-//         Self : 'next,
-//     =
-//         &'next mut [T; WIDTH]
-//     ;
-
-//     fn next (self: &'_ mut WindowsMut<&'lt mut [T], WIDTH>)
-//       -> Option<&'_ mut [T; WIDTH]>
-//     {
-//         let to_yield =
-//             self.slice
-//                 .get_mut(self.start ..)?
-//                 .get_mut(.. WIDTH)?
-//         ;
-//         self.start += 1;
-//         Some(to_yield.try_into().unwrap())
-//     }
-// }
-
-// fn _check<I : LendingIterator> (mut iter: I)
-// {
-//     let _ = _check::<Infinite>;
-//     let _ = _check::<WindowsMut<&'_ mut [u8], 2>>;
-//     while let Some(_item) = iter.next() {
-//         // …
-//     }
-// }
-
-// /// `T : MyFnMut<A> <=> T : FnMut(A) -> _`
-// trait MyFnMut<A> : FnMut(A) -> Self::Ret {
-//     type Ret;
-// }
-// impl<F : ?Sized + FnMut(A) -> R, A, R> MyFnMut<A> for F {
-//     type Ret = R;
-// }
-
-// struct Map<I, F>(I, F);
-
-// #[gat]
-// impl<I, F> LendingIterator for Map<I, F>
+// pub use
+// #[doc(hidden)]
+// pub
+// enum lending_iter_from_fn<ItemType, State, Next>
 // where
-//     I : LendingIterator,
-//     for<'any>
-//         F : MyFnMut<Item<'any, I>>
-//     ,
+//     ItemType : HKT,
+//     Next : FnMut(&'_ mut State) -> Option< A!(Item<'_>) >,
 // {
-//     type Item<'next>
-//     where
-//         Self : 'next,
-//     =
-//         <F as MyFnMut<Item<'next, I>>>::Ret
-//     ;
-
-//     fn next (self: &'_ mut Map<I, F>)
-//       -> Option<
-//             <F as MyFnMut<Item<'_, I>>>::Ret
-//         >
-//     {
-//         self.0.next().map(&mut self.1)
-//     }
+//     lending_iter_from_fn,
+//     #[doc(hidden)]
+//     __(::core::marker::PhantomData<(fn(&()) -> &Self, ǃ)>),
 // }
+
+// enum __ {}
+// macro_rules! emit {( $($_:tt)* ) => ( $($_)* )} use emit;
+// macro_rules! fake_fn {(
+//     $(#[doc = $doc:expr])*
+//     $pub:vis
+//     fn $fname:ident [$($generics:tt)*] (
+//         $(
+//             $arg:tt : $Arg:ty
+//         ),* $(,)?
+//     ) $( -> $Ret:ty )?
+//     where {
+//         $($wc:tt)*
+//     }
+//     $body:block
+// ) => (
+//   #[cfg(not(doc))]
+//   emit! {
+//   ::paste::paste! {
+//     use [<__helper__ $fname>]::$fname;
+//     #[allow(unused_imports)]
+//     $pub use [<__helper__ $fname>]::$fname::*;
+//     #[allow(nonstandard_style)]
+//     mod [<__helper__ $fname>] {
+//         use super::*;
+
+//         #[allow(nonstandard_style)]
+//         #[doc(hidden)]
+//         pub
+//         enum $fname<$($generics)*>
+//         where
+//             $($wc)*
+//         {
+//             $fname,
+//             #[doc(hidden)]
+//             __(::core::marker::PhantomData<(
+//                 ǃ, fn(&()) -> &mut Self,
+//             )>),
+//         }
+//     }
+//   }
+
+//     impl<$($generics)*> ::core::ops::Deref
+//         for $fname<$($generics)*>
+//     where
+//         $($wc)*
+//     {
+//         type Target = fn($($Arg),*) $(-> $Ret)?;
+
+//         fn deref (
+//             self: &'_ Self,
+//         ) -> &'_ Self::Target
+//         {
+//             impl<$($generics)*> $fname<$($generics)*>
+//             where
+//                 $($wc)*
+//             {
+//                 const FN_PTR: fn($($Arg),*) $(-> $Ret)? = |$($arg),*| $body;
+//             }
+
+//             &Self::FN_PTR
+//         }
+//     }
+//   }
+//     #[cfg(doc)]
+//     $(#[doc = $doc])*
+//     $pub
+//     fn $fname<$($generics)*> (
+//         $( $arg: $Arg ),*
+//     ) $(-> $Ret)?
+//     where
+//         $($wc)*
+//     $body
+// )} use fake_fn;

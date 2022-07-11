@@ -26,23 +26,28 @@ ui-tests = ["better-docs"]
 
 [dependencies]
 higher-order-closure.version = "0.0.5"
-higher-order-closure.path = "../higher-order-closure.rs"
+macro_rules_attribute.version = "0.1.2"
+nougat.version = "0.2.0-rc2"
+polonius-the-crab.version = "0.2.1"
+never-say-never = "6.6.666"
+paste = "1.0.7"
 
-macro_rules_attribute.version = "0.1.1"
-macro_rules_attribute.path = "../macro_rules_attribute-rs"
 
-nougat.version = "0.2.0-rc1"
-nougat.path = "../nougat.rs"
-
-polonius-the-crab.version = "0.2.2-rc1"
-polonius-the-crab.path = "../polonius-the-crab.rs"
+[dependencies.lending-iterator-proc_macros]
+path = "src/proc_macros"
+version = "0.1.0-rc1"  # Keep in sync
 
 [dev-dependencies]
 
 [workspace]
+members = [
+    "src/proc_macros",
+]
 
 [package.metadata.docs.rs]
-all-features = true
+features = [
+    "better-docs",
+]
 rustdoc-args = [
     "--html-before-content", "fix-docsrs-li-details-summary.html",
 ]

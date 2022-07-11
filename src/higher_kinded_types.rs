@@ -12,16 +12,25 @@
 ///
 /// This can be useful when needing to nudge type inference so as to imbue
 /// closures with the appropriate higher-order signature that a fully generic
-/// signature, such as [`crate::lending_iterator::lending_iterator`]'s.
+/// signature, such as [`crate::lending_iterator::lending_iter_from_fn`]'s.
+///
+/// See [the module documentation for more info][self].
 pub
 trait HKT
 where
     Self : for<'any> WithLifetime<'any>,
 {}
-impl<'lt, T : ?Sized> HKT for T
+impl<T : ?Sized> HKT for T
 where
     Self : for<'any> WithLifetime<'any>,
 {}
+
+impl<'lt, F : ?Sized, R> WithLifetime<'lt> for F
+where
+    F : FnOnce(&'lt ()) -> R,
+{
+    type T = R;
+}
 
 /// [`HKT`][trait@HKT]'s internals.
 ///
@@ -82,6 +91,19 @@ macro_rules! HKT {
             dyn for<$lt> $crate::higher_kinded_types::WithLifetime<$lt, T = $T>
         >
     );
+
+    (
+        $T:ty $(,)?
+    ) => (
+        $crate::higher_kinded_types::HKT!(
+            // It is very sad that using `fn(&()) -> $T` or variants based off
+            // it does not seem to yield an actually usable HKT type.
+            //
+            // So fall back to manually uneliding the lifetimes using a
+            // proc-macro 😔.
+            <'ඞ /* ' */> => $crate::ඞ::lending_iterator_proc_macros::HKT!($T)
+        )
+    );
 }
 
 #[allow(type_alias_bounds)]
@@ -116,7 +138,7 @@ type Feed<'lt, T : ?Sized + HKT> = <T as WithLifetime<'lt>>::T;
 /// ```
 ///
 /// It's really just sugar for
-/// <code>\<Type as [WithLifetime]\<\'lt\>::T</code>.
+/// <code>[Feed]\<\'lt, Type\></code>.
 ///
 /// ## Usage
 ///
@@ -183,7 +205,7 @@ macro_rules! ඞ_munch_Apply {
         [acc: $T:ty]
         <$lt:lifetime>
     ) => (
-        $crate::higher_kinded_types::Feed<$lt, $T>
+        $crate::Apply! { $T, <$lt> }
     );
 
     (

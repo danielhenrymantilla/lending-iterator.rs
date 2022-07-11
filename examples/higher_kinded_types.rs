@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+
 use {
     ::core::{
         cell::RefCell,
@@ -63,13 +64,13 @@ fn main ()
         RefCell::new(Person {
             name: "".into(),
             surname: "Globby".into(),
-            age: 255,
+            age: 0xff,
         }),
     ];
     let elems = &array[..];
 
     // OK
-    debug_each::<HKT!(<'lt> => u8), _>(
+    debug_each::<HKT!(u8), _>(
         elems,
         |person: &'_ Person| -> u8 {
             person.age
@@ -77,47 +78,22 @@ fn main ()
     );
 
     // OK
-    debug_each::<HKT!(<'lt> => String), _>(
+    debug_each::<HKT!(String), _>(
         elems,
         Person::full_name,
     );
 
     // OK
-    debug_each::<HKT!(<'lt> => ::std::borrow::Cow<'lt, str>), _>(
+    debug_each::<HKT!(::std::borrow::Cow<'_, str>), _>(
         elems,
         Person::name,
     );
 
-    // OK!
-    type StrRef = HKT!(<'lt> => &'lt str);
-    debug_each::<StrRef, _>(
+    // OK as well!
+    debug_each::<HKT!(&str), _>(
         elems,
-        returning::<StrRef>().higher_order_closure(
-            |person: &'_ Person| -> &'_ str {
-                &person.surname
-            }
-        ),
+        |person: &Person| -> &str {
+            &person.surname
+        },
     );
-}
-
-// builder pattern
-fn returning<R : HKT> ()
-  -> Returning<R>
-{
-    Returning(<_>::default())
-}
-// where
-struct Returning<R : HKT>(::core::marker::PhantomData<R>);
-impl<R : HKT> Returning<R> {
-    /// Funnel function imbuing the given closures with the right higher-order
-    /// signature.
-    fn higher_order_closure<F> (
-        self: &'_ Returning<R>,
-        f: F,
-    ) -> F // funnel
-    where
-        F : Fn(&'_ Person) -> Apply!(R<'_>),
-    {
-        f
-    }
 }

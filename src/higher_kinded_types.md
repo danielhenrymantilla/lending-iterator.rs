@@ -652,6 +652,19 @@ crate.
     # */)
     ```
 
+      - 💡 The macro supports lifetime elision rules: you can directly feed a
+        type with elided lifetimes, as in <code>[HKT!]\(Type\<\'_\>\)</code>,
+        and the macro will automagically replace it with
+        `HKT!(<'a> => Type<'a>)` 💡
+
+    ```rust ,ignore
+    // This works too!
+    debug_each::<HKT!(&str)>( // or `HKT!(&'_ str)`.
+    # /*
+        …
+    # */)
+    ```
+
       - Note that nothing requires that these `HKT!` invocations be inlined in
         their turbofished sites; instead, you can easily define type aliases
         using them:
@@ -690,6 +703,7 @@ crate.
 
 ```rust
 #![forbid(unsafe_code)]
+
 use {
     ::core::{
         cell::RefCell,
@@ -768,106 +782,25 @@ fn main ()
     );
 
     // OK
-    debug_each::<HKT!(<'lt> => String), _>(
+    debug_each::<HKT!(String), _>( /* using the lifetime-elision syntax */
         elems,
         Person::full_name,
     );
 
     // OK
-    debug_each::<HKT!(<'lt> => ::std::borrow::Cow<'lt, str>), _>(
+    debug_each::<HKT!(::std::borrow::Cow<'_, str>), _>(
         elems,
         Person::name,
     );
-}
-```
 
-  - For those wondering, HKTs are a complex enough invention for them not to
-    work with type inference: turbofishing the type parameter if `debug_each` is
-    mandatory!
-
-Now, this API does come with a severe limitation, alas, which is that:
-
-```rust ,compile_fail
-// Error!
-debug_each::<HKT!(<'lt> => &'lt str), _>(
-    elems,
-    |person: &'_ Person| -> &'_ str {
-        &*person.fullname
-    },
-);
-```
-
-fails.
-
-This is due to **numerous and important limitations of _the language_
-when dealing with _closures_ and _higher-order signatures_**.
-
-Indeed, higher-order closures only work when the callee is fully explicit about
-the kind of higher-order return type it is expecting for the given closure.
-
-  - See <https://docs.rs/higher-order-closure> for more info about this.
-
-And it turns out that our `-> Apply<R<'_>>` return type comes in "too late", for
-it to be able to nudge the closure signature into becoming higher-order.
-Indeed, both the closure arg and the `R` generic parameter are given "at the
-same time", so `R` is not necessarily fully known yet by the time the
-closure itself is being type-checked.
-
-To which we may wonder: does that mean that if `R` were somehow fed _before_
-that function invocation things would Just Work™? It can't be that easy, can it?
-Well, the good news (after all this painful path) is that feeding `R` in advance
-does indeed suffice!
-
-Hence yielding the following example API:
-
-```rust
-# use ::lending_iterator::higher_kinded_types::{Apply, HKT};
-# struct Person { full_name: String }
-// builder pattern
-fn returning<R : HKT> ()
-  -> Returning<R>
-{
-    Returning(<_>::default())
-}
-// where
-struct Returning<R : HKT>(::core::marker::PhantomData<R>);
-impl<R : HKT> Returning<R> {
-    /// Funnel function imbuing the given closures with the right higher-order
-    /// signature.
-    fn higher_order_closure<F> (
-        self: &'_ Returning<R>,
-        f: F,
-    ) -> F // funnel
-    where
-        F : Fn(&'_ Person) -> Apply!(R<'_>),
-    {
-        f
-    }
-}
-```
-
-with it, the following works:
-
-```rust
-# #[cfg(any())] macro_rules! ignore {
-type StrRef = HKT!(<'lt> => &'lt str);
-// OK!
-debug_each::<StrRef>(
-    elems,
-    returning::<StrRef, _>().higher_order_closure(
-        |person: &'_ Person| -> &'_ str {
+    // OK as well!
+    debug_each::<HKT!(&str), _>(
+        elems,
+        |person: &Person| -> &str {
             &person.surname
-        }
-    ),
-);
-# }
+        },
+    );
+}
 ```
-
-Usually the builder patterns ought to be embedded into the specific API
-itself, rather than requiring callers to provide their own
-`returning::<…>().higher_order_closure` builder pattern.
-
-This is, for instance, what `LendingIterator` does with its
-`.lending::<…>()` APIs.
 
 </details>

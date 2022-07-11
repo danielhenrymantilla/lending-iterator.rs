@@ -5,56 +5,68 @@ version = 3
 [[package]]
 name = "higher-order-closure"
 version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c450d87a307c754cbd7718dfca84b8904e313157191fae5b249d37aab216c89"
 
 [[package]]
 name = "lending-iterator"
 version = "0.1.0-rc1"
 dependencies = [
  "higher-order-closure",
- "macro_rules_attribute 0.1.1",
+ "lending-iterator-proc_macros",
+ "macro_rules_attribute",
+ "never-say-never",
  "nougat",
+ "paste",
  "polonius-the-crab",
 ]
 
 [[package]]
-name = "macro_rules_attribute"
-version = "0.1.1"
+name = "lending-iterator-proc_macros"
+version = "0.1.0-rc1"
 dependencies = [
- "macro_rules_attribute-proc_macro 0.1.1",
- "paste",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
 name = "macro_rules_attribute"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "422a6e082b3d33461030d68a243af2482eefded078eaaf8ac401777d21cae32b"
+checksum = "258c86475e1616d6f2d8f5227cfaabd3dae1f6d5388b9597df8a199d4497aba7"
 dependencies = [
- "macro_rules_attribute-proc_macro 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "macro_rules_attribute-proc_macro",
  "paste",
 ]
 
 [[package]]
 name = "macro_rules_attribute-proc_macro"
-version = "0.1.1"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f26a8d2502d5aa4d411ef494ba7470eb299f05725179ce3b5de77aa01a9ffdea"
 
 [[package]]
-name = "macro_rules_attribute-proc_macro"
-version = "0.1.1"
+name = "never-say-never"
+version = "6.6.666"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb4091d2e7f515b3a7ae8dda39417cd2b81d5c8814f68361c3e15b24e2d40b4a"
+checksum = "cf5a574dadd7941adeaa71823ecba5e28331b8313fb2e1c6a5c7e5981ea53ad6"
 
 [[package]]
 name = "nougat"
-version = "0.2.0-rc1"
+version = "0.2.0-rc2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d0a5f8509b48958c7312cbd83bed0132b98c3fdc8c65a2571e8cd6086bb64f6"
 dependencies = [
- "macro_rules_attribute 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "macro_rules_attribute",
  "nougat-proc_macros",
 ]
 
 [[package]]
 name = "nougat-proc_macros"
-version = "0.2.0-rc1"
+version = "0.2.0-rc2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6698c3c28dfd541a4477d0d642f5eb15eabac1f2f320c04055f12fe9e44e1e4e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -69,7 +81,9 @@ checksum = "0c520e05135d6e763148b6426a837e239041653ba7becd2e538c076c738025fc"
 
 [[package]]
 name = "polonius-the-crab"
-version = "0.2.2-rc1"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2a69ee997a6282f8462abf1e0d8c38c965e968799e912b3bed8c9e8a28c2f9f"
 
 [[package]]
 name = "proc-macro2"
