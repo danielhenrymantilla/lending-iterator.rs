@@ -185,9 +185,6 @@ trait LendingIterator : for<'next> LendingIteratorඞItem<'next> {
       -> Fuse<Self>
     where
         Self : Sized,
-        // Skip<Self>
-        //     : for<'next> LendingIterator<Item<'next> = Item<'next, Self>>
-        // ,
     {
         Fuse(Some(self))
     }
@@ -228,9 +225,6 @@ trait LendingIterator : for<'next> LendingIteratorඞItem<'next> {
     ) -> Skip<Self>
     where
         Self : Sized,
-        // Skip<Self>
-        //     : for<'next> LendingIterator<Item<'next> = Item<'next, Self>>
-        // ,
     {
         Skip {
             iter: self,
@@ -246,9 +240,6 @@ trait LendingIterator : for<'next> LendingIteratorඞItem<'next> {
     where
         F : FnMut(Item<'_, Self>) -> bool,
         Self : Sized,
-        // SkipWhile<Self, F>
-        //     : for<'next> LendingIterator<Item<'next> = Item<'next, Self>>
-        // ,
     {
         SkipWhile { iter: self, predicate }
     }
@@ -259,9 +250,6 @@ trait LendingIterator : for<'next> LendingIteratorඞItem<'next> {
     ) -> Take<Self>
     where
         Self : Sized,
-        // Take<Self>
-        //     : for<'next> LendingIterator<Item<'next> = Item<'next, Self>>
-        // ,
     {
         Take {
             iter: self,
@@ -277,9 +265,6 @@ trait LendingIterator : for<'next> LendingIteratorඞItem<'next> {
     where
         Self : Sized,
         F : FnMut(&Self::Item) -> bool,
-        // TakeWhile<Self, F>
-        //     : for<'next> LendingIterator<Item<'next> = Item<'next, Self>>
-        // ,
     {
         TakeWhile(self)
     }
@@ -354,90 +339,3 @@ trait LendingIterator : for<'next> LendingIteratorඞItem<'next> {
             .with(f)
     }
 }
-
-// pub use
-// #[doc(hidden)]
-// pub
-// enum lending_iter_from_fn<ItemType, State, Next>
-// where
-//     ItemType : HKT,
-//     Next : FnMut(&'_ mut State) -> Option< A!(Item<'_>) >,
-// {
-//     lending_iter_from_fn,
-//     #[doc(hidden)]
-//     __(::core::marker::PhantomData<(fn(&()) -> &Self, ǃ)>),
-// }
-
-// enum __ {}
-// macro_rules! emit {( $($_:tt)* ) => ( $($_)* )} use emit;
-// macro_rules! fake_fn {(
-//     $(#[doc = $doc:expr])*
-//     $pub:vis
-//     fn $fname:ident [$($generics:tt)*] (
-//         $(
-//             $arg:tt : $Arg:ty
-//         ),* $(,)?
-//     ) $( -> $Ret:ty )?
-//     where {
-//         $($wc:tt)*
-//     }
-//     $body:block
-// ) => (
-//   #[cfg(not(doc))]
-//   emit! {
-//   ::paste::paste! {
-//     use [<__helper__ $fname>]::$fname;
-//     #[allow(unused_imports)]
-//     $pub use [<__helper__ $fname>]::$fname::*;
-//     #[allow(nonstandard_style)]
-//     mod [<__helper__ $fname>] {
-//         use super::*;
-
-//         #[allow(nonstandard_style)]
-//         #[doc(hidden)]
-//         pub
-//         enum $fname<$($generics)*>
-//         where
-//             $($wc)*
-//         {
-//             $fname,
-//             #[doc(hidden)]
-//             __(::core::marker::PhantomData<(
-//                 ǃ, fn(&()) -> &mut Self,
-//             )>),
-//         }
-//     }
-//   }
-
-//     impl<$($generics)*> ::core::ops::Deref
-//         for $fname<$($generics)*>
-//     where
-//         $($wc)*
-//     {
-//         type Target = fn($($Arg),*) $(-> $Ret)?;
-
-//         fn deref (
-//             self: &'_ Self,
-//         ) -> &'_ Self::Target
-//         {
-//             impl<$($generics)*> $fname<$($generics)*>
-//             where
-//                 $($wc)*
-//             {
-//                 const FN_PTR: fn($($Arg),*) $(-> $Ret)? = |$($arg),*| $body;
-//             }
-
-//             &Self::FN_PTR
-//         }
-//     }
-//   }
-//     #[cfg(doc)]
-//     $(#[doc = $doc])*
-//     $pub
-//     fn $fname<$($generics)*> (
-//         $( $arg: $Arg ),*
-//     ) $(-> $Ret)?
-//     where
-//         $($wc)*
-//     $body
-// )} use fake_fn;
