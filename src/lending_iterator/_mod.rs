@@ -17,7 +17,7 @@ use {
     }
 };
 
-#[path = "lending_iterator/adapters/_mod.rs"]
+#[path = "adapters/_mod.rs"]
 pub
 mod adapters;
 

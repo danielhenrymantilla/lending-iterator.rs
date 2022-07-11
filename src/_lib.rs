@@ -24,6 +24,7 @@ mod utils;
 pub
 mod higher_kinded_types;
 
+#[path = "lending_iterator/_mod.rs"]
 pub
 mod lending_iterator;
 
