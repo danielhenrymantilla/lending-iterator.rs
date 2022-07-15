@@ -43,9 +43,11 @@ jobs:
 
       - name: Cargo test
         uses: actions-rs/cargo@v1
+        env:
+          RUSTC_BOOTSTRAP: 1
         with:
           command: test
-          args: ${{ matrix.cargo-locked }}
+          args: ${{ matrix.cargo-locked }} --features better-docs
 
       - name: Cargo test (embed `README.md` + UI)
         if: matrix.rust-toolchains != '1.57.0'

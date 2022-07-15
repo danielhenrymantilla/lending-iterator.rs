@@ -69,10 +69,13 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+          args: --lib
 
       - name: Cargo test (embedded doc tests)
         if: matrix.rust-toolchains == 'stable'
         uses: actions-rs/cargo@v1
+        env:
+          RUSTC_BOOTSTRAP: 1
         with:
           command: test
           args: --features better-docs --doc

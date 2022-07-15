@@ -1,0 +1,27 @@
+# Templated by `cargo-generate` using https://github.com/danielhenrymantilla/proc-macro-template
+[lib]
+proc-macro = true
+path = "mod.rs"
+
+[package]
+name = "lending-iterator-proc_macros"
+authors = [
+    "Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>"
+]
+version = "0.1.0-rc1"  # Keep in sync
+edition = "2021"
+
+license = "Zlib OR MIT OR Apache-2.0"
+repository = "https://github.com/danielhenrymantilla/lending-iterator.rs"
+documentation = "https://docs.rs/lending-iterator"
+
+description = "Internal: proc-macro backend of ::lending_iterator."
+
+[dependencies]
+proc-macro2.version = "1.0.0"
+quote.version = "1.0.0"
+syn.version = "1.0.7"  # Access to `receiver()`.
+syn.features = [
+    "visit-mut",
+    # "full",
+]
