@@ -4,18 +4,19 @@ use {
     CanonicalHKT as Eta,
 };
 
-fn check<'r> (slice: &'r mut [i32])
-  -> Box<dyn 'r + LendingIteratorDyn<Item = HKT!(&mut [i32; 1])>>
+// Check `dyn`-unification when dealing with a non-generic way of lending.
+fn check<'r, T> (slice: &'r mut [T])
+  -> Box<dyn 'r + LendingIteratorDyn<Item = HKT!(&mut [T; 1])>>
 {
     if true {
-        from_fn::<HKT!(&mut [i32; 1]), _, _>(
+        from_fn::<HKT!(&mut [T; 1]), _, _>(
             slice.iter_mut(),
             |iter| iter.next().map(::core::array::from_mut),
         )
         .dyn_boxed()
     } else {
         crate::windows_mut::<_, 2>(slice)
-            .map::<HKT!(&mut [i32; 1]), _>(|[], window| {
+            .map::<HKT!(&mut [T; 1]), _>(|[], window| {
                 ::core::array::from_mut(&mut window[0])
             })
             .dyn_boxed()
@@ -35,40 +36,49 @@ where
     > =
         i.dyn_boxed_auto()
     ;
-    i
-        .by_ref_dyn()
+    i   .by_ref_dyn()
         .fold((), |(), _| ());
 }
 
+/// ### Example: `dyn` coercion of a _fully generic_ `LendingIterator`:
+///
+/// WITH MISSING `Sync`!
+///
+/**  - ```rust
+    use ::lending_iterator::{
+        higher_kinded_types::*,
+        lending_iterator::*,
+    };
 
-/** ```rust ,compile_fail
-use ::lending_iterator::{
-    higher_kinded_types::{*, CanonicalHKT as Eta},
-    lending_iterator::*,
-};
-
-type HKTItem<T> = HKT!(Item<'_, T>);
-
-fn coercions<'T, Item, T> (
-    it: T,
-)
-where
-    Item : HKT,
-    T : 'T + Clone + LendingIterator + Send,
-{
-    let _: Box<dynLendingIterator<'T, Eta<HKTItem<T>>,                 >> =
-        it.clone().dyn_boxed_auto()
-    ;
-    let _: Box<dynLendingIterator<'T, Eta<HKTItem<T>>, dyn Send        >> =
-        it.clone().dyn_boxed_auto()
-    ;
-    // Fails here:
-    let _: Box<dynLendingIterator<'T, Eta<HKTItem<T>>, dyn Sync        >> =
-        it.clone().dyn_boxed_auto()
-    ;
-    let _: Box<dynLendingIterator<'T, Eta<HKTItem<T>>, dyn Send + Sync >> =
-        it.clone().dyn_boxed_auto()
-    ;
-}
-``` */
+    fn coercions<'T, Item, T> (it: T)
+    where
+        Item : HKT,
+        T : 'T + Send + LendingIterator,
+        // T : Sync
+        T : LendingIteratorDyn<Item = CanonicalHKT<Item>>,
+    {
+        match () {
+            _ => {
+                let _: Box<dyn 'T + LendingIteratorDyn<Item = CanonicalHKT<Item>>> =
+                    it.dyn_boxed_auto()
+                ;
+            },
+            _ => {
+                let _: Box<dyn 'T + LendingIteratorDyn<Item = CanonicalHKT<Item>> + Send> =
+                    it.dyn_boxed_auto()
+                ;
+            },
+            _ => {
+                let _: Box<dyn 'T + LendingIteratorDyn<Item = CanonicalHKT<Item>> + Sync> =
+                    it.dyn_boxed_auto()
+                ;
+            },
+            _ => {
+                let _: Box<dyn 'T + LendingIteratorDyn<Item = CanonicalHKT<Item>> + Send + Sync> =
+                    it.dyn_boxed_auto()
+                ;
+            },
+        }
+    }
+    ``` */
 extern {}
