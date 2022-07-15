@@ -5,7 +5,7 @@ use {
 };
 
 fn check<'r> (slice: &'r mut [i32])
-  -> Box<dynLendingIterator<'r, HKT!(&mut [i32; 1])>>
+  -> Box<dyn 'r + LendingIteratorDyn<Item = HKT!(&mut [i32; 1])>>
 {
     if true {
         from_fn::<HKT!(&mut [i32; 1]), _, _>(
@@ -22,37 +22,24 @@ fn check<'r> (slice: &'r mut [i32])
     }
 }
 
-fn f2<'I, I : 'I + LendingIterator> (i: I)
+fn f2<'I, I : 'I + LendingIterator + Send, Item : HKT> (i: I)
+where
+    I : LendingIteratorDyn<Item = CanonicalHKT<Item>>,
+    // for<'any>
+    //     I : LendingIteratorඞItem<'any, T = A!(Item<'any>)>
+    // ,
 {
-    i   .dyn_boxed()
-        .dyn_ref()
+    let mut i: Box<dyn
+        'I + Send
+        + LendingIteratorDyn<Item = CanonicalHKT<Item>>
+    > =
+        i.dyn_boxed_auto()
+    ;
+    i
+        .by_ref_dyn()
         .fold((), |(), _| ());
 }
 
-fn coercions<'T, Item : HKT, T : 'T + Clone + LendingIterator + Send + Sync> (
-    it: T,
-)
-where
-    for<'any>
-        T : LendingIteratorඞItem<'any, T = A!(Item<'any>)>
-    ,
-{
-    extern crate alloc;
-    use alloc::boxed::Box;
-
-    let _: Box<dynLendingIterator<'T, Eta<HKTItem<T>>,                 >> =
-        it.clone().dyn_boxed_auto()
-    ;
-    let _: Box<dynLendingIterator<'T, Eta<HKTItem<T>>, dyn Send        >> =
-        it.clone().dyn_boxed_auto()
-    ;
-    let _: Box<dynLendingIterator<'T, Eta<HKTItem<T>>, dyn Sync        >> =
-        it.clone().dyn_boxed_auto()
-    ;
-    let _: Box<dynLendingIterator<'T, Eta<HKTItem<T>>, dyn Send + Sync >> =
-        it.clone().dyn_boxed_auto()
-    ;
-}
 
 /** ```rust ,compile_fail
 use ::lending_iterator::{

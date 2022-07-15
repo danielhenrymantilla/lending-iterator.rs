@@ -3,21 +3,14 @@
 version = 3
 
 [[package]]
-name = "higher-order-closure"
-version = "0.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c450d87a307c754cbd7718dfca84b8904e313157191fae5b249d37aab216c89"
-
-[[package]]
 name = "lending-iterator"
 version = "0.1.0-rc1"
 dependencies = [
- "higher-order-closure",
  "lending-iterator-proc_macros",
+ "macro-vis",
  "macro_rules_attribute",
  "never-say-never",
  "nougat",
- "paste",
  "polonius-the-crab",
 ]
 
@@ -28,6 +21,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "macro-vis"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce501641c89150590dd52eb8b38cf2e9208c9015998e889f1142d7914b32c34f"
+dependencies = [
+ "proc-macro2",
+ "quote",
 ]
 
 [[package]]

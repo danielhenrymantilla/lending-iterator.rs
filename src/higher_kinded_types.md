@@ -245,8 +245,10 @@ HKTs come into play the moment we need "generic generics".
 
     With this,
 
-    ```rust ,ignore
+    ```rust
+    # #[cfg(any)] macro_rules! ignore {
     debug_each(elems, |person: &Person| -> u8 { person.age });
+    # }
     ```
 
     works Just Fine™.
@@ -268,23 +270,27 @@ HKTs come into play the moment we need "generic generics".
     It turns out that we can't really answer it: if we unsugar the `impl Fn`
     required signature, we have:
 
-    ```rust ,ignore
+    ```rust
+    # #[cfg(any)] macro_rules! ignore {
     impl Fn(&Person) -> R
     // is the same as:
     impl for<'local> Fn(&'local Person) -> R
+    # }
     ```
 
     and so we would have liked to pick `R = &'local str`.
 
     Let's see the function signature that would have resulted from that:
 
-    ```rust ,ignore
+    ```rust
+    # #[cfg(any)] macro_rules! ignore {
     fn debug_each<R /* = &'local str */> (
         elems: &[RefCell<Person>],
         f: impl for<'local> Fn(&'local Person) -> R,
     )
     where
         R : Debug,
+    # }
     ```
 
     Can you spot the issue?
@@ -304,30 +310,36 @@ HKTs come into play the moment we need "generic generics".
     Indeed, there is a simpler way to make the signature compile: "just" slap a
     `&` in front of that `R` in the return type of the closure!
 
-    ```rust ,ignore
+    ```rust
+    # #[cfg(any)] macro_rules! ignore {
     fn debug_each<R : ?Sized /* = str */> (
         elems: &'_ [RefCell<Person>],
         f: impl for<'local> Fn(&'local Person) -> &'local R,
     )
     where
         R : Debug,
+    # }
     ```
 
     which, for better or for worse, can be further reduced down to:
 
-    ```rust ,ignore
+    ```rust
+    # #[cfg(any)] macro_rules! ignore {
     fn debug_each<R : ?Sized /* = str */> (
         elems: &[RefCell<Person>],
         f: impl Fn(&Person) -> &R,
     )
     where
         R : Debug,
+    # }
     ```
 
     And when doing so, then yes,
 
-    ```rust ,ignore
+    ```rust
+    # #[cfg(any)] macro_rules! ignore {
     |person: &Person| -> &str { &person.name }
+    # }
     ```
 
     will be a valid callback to feed to `debug_each` ✅
@@ -437,8 +449,10 @@ This, in real Rust, comes with three challenges:
   - Expressing that `ArrayKind : <T>` constraint. In other words, encoding
     the `<T>`-ness property into a trait.
 
-    ```rust ,ignore
+    ```rust
+    # #[cfg(any)] macro_rules! ignore {
     trait HKT : /* magic */ { /* magic */ }
+    # }
     ```
 
   - Applying / feeding a `<T>` type parameter to it to query the resulting
@@ -481,8 +495,10 @@ This, in real Rust, comes with three challenges:
         https://docs.rs/nougat):
 
          1. We define:
-            ```rust ,ignore
+            ```rust
+            # #[cfg(any)] macro_rules! ignore {
             trait WithLifetime<'lt> { type Assoc; }
+            # }
             ```
 
             which encodes a _single_ `'lt => Self::Assoc` mapping for the `Self`
@@ -490,8 +506,10 @@ This, in real Rust, comes with three challenges:
 
          1. And then we alias:
 
-            ```rust ,ignore
+            ```rust
+            # #[cfg(any)] macro_rules! ignore {
             trait HKT = for<'any> WithLifetime<'any>;
+            # }
             ```
 
             to encode the idea of having the aforementioned mapping exist `for`
@@ -511,8 +529,10 @@ This, in real Rust, comes with three challenges:
 
          1. Querying the type is then done with:
 
-            ```rust ,ignore
+            ```rust
+            # #[cfg(any)] macro_rules! ignore {
             <Type as WithLifetime<'lt>>::Assoc
+            # }
             ```
 
   - Providing implementors or implementations of that trait:
@@ -570,7 +590,8 @@ adaptors.
 Given that `'next` lifetime involved in the key signature of a
 `LendingIterator`:
 
-```rust ,ignore
+```rust
+# #[cfg(any)] macro_rules! ignore {
 trait LendingIterator {
     type Item<'next>
     where
@@ -582,6 +603,7 @@ trait LendingIterator {
     ) -> Self::Item<'next>
     ;
 }
+# }
 ```
 
 it's easy to guess that we'll be dealing with `<'next>`-one-lifetime-generic
@@ -589,11 +611,13 @@ kind of HKTs.
 
 And luckily, this is the one expressible in stable Rust:
 
-```rust ,ignore
+```rust
+# #[cfg(any)] macro_rules! ignore {
 trait WithLifetime<'lt> {
     type Assoc;
 }
 trait HKT = for<'any> WithLifetime<'any>;
+# }
 ```
 
 From there, here are the following key ideas to keep in mind when using this
@@ -610,17 +634,19 @@ crate.
     So, back to our aforementioned `debug_each` example API, that `R : <'lt>`
     bound would be expressed using `R : HKT`:
 
-    ```rust ,ignore
+    ```rust
+    # #[cfg(any)] macro_rules! ignore {
     fn debug_each<R : HKT> (
     # /*
         …
-    # */ )
+    # */ )}
     ```
 
  1. **Given a `R : HKT` type, use <code>[Feed]\<\'lt, R\></code> or
     <code>[Apply!]\(R\<\'lt\>\)</code> to feed it a lifetime** `'lt`.
 
-    ```rust ,ignore
+    ```rust
+    # #[cfg(any)] macro_rules! ignore {
     fn debug_each<R : HKT> (
         elems: &[RefCell<Person>],
         f: impl for<'local> Fn(&'local Person) -> Apply!(R<'local>),
@@ -631,13 +657,16 @@ crate.
         for<'any>
             Apply!(R<'any>) : Debug
         ,
+    # }
     ```
 
     For those curious, <code>[Apply!]\(R\<\'lt\>\)</code> is just sugar for
      <code>[Feed]\<\'lt, R\></code>, which in turn is an alias for:
 
-    ```rust ,ignore
+    ```rust
+    # #[cfg(any)] macro_rules! ignore {
     <R as WithLifetime<'lt>>::T
+    # }
     ```
 
  1. And last but totally not least,
@@ -645,11 +674,12 @@ crate.
     **use <code>[HKT!]\(\<\'lt\> =\> Type…\)</code> to define and provide an
     ad-hoc HKT / generic-lifetime-to-type association**.
 
-    ```rust ,ignore
+    ```rust
+    # #[cfg(any)] macro_rules! ignore {
     debug_each::<HKT!(<'local> => &'local str)>(
     # /*
         …
-    # */)
+    # */)}
     ```
 
       - 💡 The macro supports lifetime elision rules: you can directly feed a
@@ -657,36 +687,39 @@ crate.
         and the macro will automagically replace it with
         `HKT!(<'a> => Type<'a>)` 💡
 
-    ```rust ,ignore
+    ```rust
+    # #[cfg(any)] macro_rules! ignore {
     // This works too!
     debug_each::<HKT!(&str)>( // or `HKT!(&'_ str)`.
     # /*
         …
-    # */)
+    # */)}
     ```
 
       - Note that nothing requires that these `HKT!` invocations be inlined in
         their turbofished sites; instead, you can easily define type aliases
         using them:
 
-        ```rust ,ignore
+        ```rust
+        # #[cfg(any)] macro_rules! ignore {
         type HKTRefStr = HKT!(<'lt> => &'lt str);
 
         debug_each::<HKTRefStr>(
         # /*
             …
-        # */)
+        # */)}
         ```
 
         or even make the HKT, itself, be generic!
 
-        ```rust ,ignore
+        ```rust
+        # #[cfg(any)] macro_rules! ignore {
         type HKTRef<T /* : ?Sized */> = HKT!(<'lt> => &'lt T);
 
         debug_each::<HKTRef<str>>(
         # /*
             …
-        # */)
+        # */)}
         ```
 
     For those curious, the [`HKT!`] macro expands to a

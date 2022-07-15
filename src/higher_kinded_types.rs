@@ -90,7 +90,7 @@ for
 /// _Ad-hoc_ <code>impl [HKT][trait@HKT]</code> type.
 ///
 /// See [the module documentation for more info][self] for more info.
-#[macro_export]
+#[apply(public_macro!)]
 macro_rules! HKT {
     (
         <$lt:lifetime> => $T:ty $(,)?
@@ -159,7 +159,7 @@ type Feed<'lt, T : ?Sized + HKT> = <T as WithLifetime<'lt>>::T;
 /// If you don't like using macros in type position, rather than
 /// using `Apply!(Type<'lifetime>)` or `Apply!(Type, <'lifetime>)`, you can use
 /// <code>[Feed]\<\'lifetime, Type\></code>.
-#[macro_export]
+#[apply(public_macro!)]
 macro_rules! Apply {
     (
         $HKT:ty, <$lt:lifetime> $(,)?
@@ -175,7 +175,7 @@ macro_rules! Apply {
         <$lt:lifetime>
         $(,)?
     ) => (
-        $crate::Apply!(
+        $crate::higher_kinded_types::Apply!(
                 $($($leading)?
             :: )? $(
             $HKT
@@ -197,10 +197,21 @@ macro_rules! Apply {
 
 #[doc(hidden)] /** Not part of the public API */ #[macro_export]
 macro_rules! ඞ_munch_Apply {
+    // Trailing comma case.
+    (
+        $acc:tt
+        <$lt:lifetime> ,
+    ) => (
+        $crate::ඞ_munch_Apply! {
+            $acc
+            <$lt>
+        }
+    );
+
     (
         [acc: $($T:tt)*]
         $current:tt
-        $a:tt $b:tt $c:tt
+        $a:tt $b:tt $c:tt // More than 3 (`<` `'lt` `>`) tokens left.
         $($rest:tt)*
     ) => (
         $crate::ඞ_munch_Apply! {
@@ -213,7 +224,7 @@ macro_rules! ඞ_munch_Apply {
         [acc: $T:ty]
         <$lt:lifetime>
     ) => (
-        $crate::Apply! { $T, <$lt> }
+        $crate::higher_kinded_types::Apply! { $T, <$lt> }
     );
 
     (
@@ -271,12 +282,12 @@ macro_rules! ඞ_munch_Apply {
 ///
 /// Thence the usefulness of this tool: given a generic `Item : HKT`, certain
 /// "round-tripping" operations such as going from [`LendingIterator`] to
-/// [`dynLendingIterator`] "and back" is unlikely to have kept the very same
-/// HKT type in place: it may itself have "suffered" from a `CanonicalHKT`
-/// lift-up by such process.
+/// <code>dyn [LendingIteratorDyn]</code> "and back" is unlikely to have kept
+/// the very same HKT type in place: it may itself have "suffered" from a
+/// `CanonicalHKT` lift-up by such process.
 ///
 /// [`LendingIterator`]: crate::lending_iterator::LendingIterator
-/// [`dynLendingIterator`]: crate::lending_iterator::dynLendingIterator
+/// [LendingIteratorDyn]: crate::lending_iterator::LendingIteratorDyn
 ///
 /// Thus, APIs expecting to work with such things may avoid compile errors by
 /// preventively `CanonicalHKT`-lifting their own `Item : HKT` types in the
@@ -286,24 +297,25 @@ macro_rules! ඞ_munch_Apply {
 ///
 /**  - ```rust
     use ::lending_iterator::{
-        higher_kinded_types::{*, Apply as A},
+        higher_kinded_types::*,
         lending_iterator::*,
     };
 
     fn unify<'usability, I, J, Item> (i: I, j: J)
-      -> [Box<dynLendingIterator<'usability, CanonicalHKT<Item>>>; 2]
-                                //           ^^^^^^^^^^^^^    ^
+      -> [Box<dyn 'usability + LendingIteratorDyn<Item = CanonicalHKT<Item>>>; 2]
+                                //                       ^^^^^^^^^^^^^    ^
                                 // without it, this snippet would fail to compile.
     where
         Item : HKT,
-        I : LendingIterator,
-        J : LendingIterator,
-        I : 'usability + for<'any> LendingIteratorඞItem<'any, T = A!(Item<'any>)>,
-        J : 'usability + for<'any> LendingIteratorඞItem<'any, T = A!(Item<'any>)>,
+        I : 'usability + LendingIterator,
+        J : 'usability + LendingIterator,
+        // Extra bounds required for the `dyn` coercion:
+        I : LendingIteratorDyn<Item = CanonicalHKT<Item>>,
+        J : LendingIteratorDyn<Item = CanonicalHKT<Item>>,
     {
         [
-            i.dyn_boxed(),
-            j.dyn_boxed(),
+            i.dyn_boxed_auto(),
+            j.dyn_boxed_auto(),
         ]
     }
 
@@ -325,8 +337,8 @@ macro_rules! ඞ_munch_Apply {
     21 |         i.dyn_boxed(),
        |         ^^^^^^^^^^^^^ expected type parameter `Item`, found enum `lending_iterator::HKT`
        |
-       = note: expected struct `Box<(dyn DynLendingIterator<Item = Item> + 'usability)>`
-                  found struct `Box<dyn DynLendingIterator<Item = lending_iterator::HKT<(dyn for<'ඞ> WithLifetime<'ඞ, for<'ඞ> T = <Item as WithLifetime<'ඞ>>::T> + 'static)>>>`
+       = note: expected struct `Box<(dyn LendingIteratorDyn<Item = Item> + 'usability)>`
+                  found struct `Box<dyn LendingIteratorDyn<Item = lending_iterator::HKT<(dyn for<'ඞ> WithLifetime<'ඞ, for<'ඞ> T = <Item as WithLifetime<'ඞ>>::T> + 'static)>>>`
     ``` */
 ///
 /// Mostly, notice the mismatch with `Item`:
@@ -350,7 +362,15 @@ macro_rules! ඞ_munch_Apply {
 pub type CanonicalHKT<T : ?Sized + HKT> = HKT!(Feed<'_, T>);
 
 #[doc(inline)]
-pub use macro_imports_helper::{Apply, HKT};
-mod macro_imports_helper {
-    pub use {Apply, HKT};
+pub
+use crate::lending_iterator::r#dyn::HKTItem;
+
+cfg_match! {
+    feature = "better-docs" => {},
+    _ => {
+        pub use macro_imports_helper::{Apply, HKT};
+        mod macro_imports_helper {
+            pub use {Apply, HKT};
+        }
+    },
 }

@@ -82,8 +82,9 @@ fn HKT_impl (
                 )
                 {
                     visit_mut::visit_type_reference_mut(self, ty_ref);
+                    let and_token = &ty_ref.and_token;
                     ty_ref.lifetime.get_or_insert_with(|| {
-                        hkt_lifetime(ty_ref.and_token.span())
+                        hkt_lifetime(and_token.span())
                     });
                 }
 

@@ -1,19 +1,28 @@
 #![cfg_attr(feature = "better-docs",
     cfg_attr(all(), doc = include_str!("../README.md")),
-    feature(doc_notable_trait),
+    feature(doc_cfg, doc_notable_trait),
+    // for macro_vis
+    feature(decl_macro, rustc_attrs),
 )]
 #![no_std]
 #![forbid(unsafe_code)]
 #![allow(nonstandard_style, uncommon_codepoints)]
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 #[doc(inline)]
-pub use self::windows_mut::windows_mut;
+pub use self::{
+    lending_iterator::{
+        from_fn,
+        from_iter,
+        LendingIterator,
+        windows_mut::windows_mut,
+    },
+};
 
-// #[macro_use]
-// extern crate higher_order_closure;
-
-// #[macro_use]
-// extern crate macro_rules_attribute;
+#[macro_use]
+extern crate macro_rules_attribute;
 
 // #[macro_use]
 extern crate nougat as nou;
@@ -27,18 +36,13 @@ mod utils;
 pub
 mod higher_kinded_types;
 
-pub
-mod windows_mut;
-
-#[path = "lending_iterator/_trait.rs"]
+#[path = "lending_iterator/_mod.rs"]
 pub
 mod lending_iterator;
 
 /// The crate's prelude.
 pub
-mod prelude {
-    // …
-}
+mod prelude;
 
 // macro internals
 #[doc(hidden)] /** Not part of the public API */ pub
@@ -54,11 +58,6 @@ mod ඞ {
     };
 }
 
-#[cfg_attr(feature = "ui-tests",
-    cfg_attr(all(), doc = include_str!("compile_fail_tests.md")),
-)]
-mod _compile_fail_tests {}
-
 #[doc(hidden)] /** Not part of the public API */ pub
 enum HKT<T : ?Sized> {
     HKT,
@@ -70,5 +69,7 @@ enum HKT<T : ?Sized> {
 #[doc(hidden)] /** Not part of the public API */ pub
 use HKT::*;
 
-// #[doc(hidden)] /** Not part of the public API */ pub
-// struct HKT<T : ?Sized>(fn(&T));
+#[cfg_attr(feature = "ui-tests",
+    cfg_attr(all(), doc = include_str!("compile_fail_tests.md")),
+)]
+mod _compile_fail_tests {}

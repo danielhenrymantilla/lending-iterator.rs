@@ -1,3 +1,5 @@
+//! Trait and helper adapter definitions.
+
 use {
     ::core::{
         marker::PhantomData,
@@ -10,25 +12,30 @@ use {
         *,
     },
     crate::{
-        higher_kinded_types::{*, Apply as A},
+        higher_kinded_types::{*, Apply as A, HKTItem},
     },
     self::{
         adapters::*,
     }
 };
 
+pub use self::{
+    r#dyn::LendingIteratorDyn,
+};
+
 #[path = "adapters/_mod.rs"]
 pub
 mod adapters;
 
-pub use r#dyn::*;
+use r#dyn::*;
 #[path = "dyn.rs"]
+pub(in crate)
 mod r#dyn;
 
 mod impls;
 
-#[cfg(test)]
-mod tests;
+pub
+mod windows_mut;
 
 pub
 fn from_iter<I : IntoIterator> (it: I)
@@ -229,14 +236,6 @@ where
         self
     }
 
-    // fn dyn_by_ref<'usability> (self: &'_ mut Self)
-    //   -> &'_ mut (dyn 'usability + DynLendingIterator<Item = DynItem<Self>>)
-    // where
-    //     Self : 'usability,
-    // {
-    //     self
-    // }
-
     fn count<> (self: Self)
       -> usize
     where
@@ -387,13 +386,35 @@ where
         (map, Map)(
             map_to_ref: [R : ?Sized] [&'any R] -> &'any R,
             map_to_mut: [R : ?Sized] [&'any mut R] -> &'any mut R,
-            map_to_owned: [R] [R] -> R,
+            // map_to_owned: [R] [R] -> R,
         ),
         (and_then, AndThen)(
             and_then_to_ref: [R : ?Sized] [&'any R] -> Option<&'any R>,
             and_then_to_mut: [R : ?Sized] [&'any mut R] -> Option<&'any mut R>,
-            and_then_to_owned: [R] [R] -> Option<R>,
+            // and_then_to_owned: [R] [R] -> Option<R>,
         ),
+    }
+
+    fn map_into_iter<F, Owned> (
+        self: Self,
+        f: F,
+    ) -> MapIntoIter<Self, F>
+    where
+        F : FnMut(Item<'_, Self>) -> Owned,
+        Self : Sized,
+    {
+        MapIntoIter(self, f)
+    }
+
+    fn and_then_into_iter<F, Owned> (
+        self: Self,
+        f: F,
+    ) -> AndThenIntoIter<Self, F>
+    where
+        F : FnMut(Item<'_, Self>) -> Option<Owned>,
+        Self : Sized,
+    {
+        AndThenIntoIter(self, f)
     }
 
     fn into_iter<Item> (
@@ -406,9 +427,10 @@ where
         IntoIter(self)
     }
 
+    #[apply(cfg_alloc)]
     fn dyn_boxed<'usability> (
         self: Self
-    ) -> Box<dyn 'usability + DynLendingIterator<Item = HKTItem<Self>>>
+    ) -> Box<dyn 'usability + LendingIteratorDyn<Item = HKTItem<Self>>>
     where
         Self : 'usability,
         Self : Sized,
@@ -419,35 +441,41 @@ where
     fn dyn_boxed_auto<BoxedDynLendingIterator, Item : HKT> (self: Self)
       -> BoxedDynLendingIterator
     where
-        Self : Sized + MyCoerce<BoxedDynLendingIterator, Item>,
+        Self : Sized + DynCoerce<BoxedDynLendingIterator, Item>,
     {
         Self::coerce(self)
     }
 }
 )}
+
+#[doc(hidden)] // Let's not overwhelm users of the crate with info.
 pub
-trait MyCoerce<T, Item> {
+trait DynCoerce<T, Item> : Sized {
     fn coerce(self: Self) -> T;
 }
-r#dyn::with_auto_traits! {( $($($AutoTraits:tt)+)? ) => (
-    impl<'I, I, Item : HKT>
-        MyCoerce<
-            Box<dyn 'I $(+ $($AutoTraits)+)? + DynLendingIterator<Item = CanonicalHKT<Item>>>,
+
+#[apply(cfg_alloc)]
+r#dyn::with_auto_traits! {( $($AutoTraits:tt)* ) => (
+    impl<'I, I : 'I, Item>
+        DynCoerce<
+            Box<dyn
+                'I + LendingIteratorDyn<Item = CanonicalHKT<Item>> +
+                $($AutoTraits)*
+            >,
             Item,
         >
     for
         I
     where
-        I : 'I + LendingIterator,
-        for<'any>
-            I : LendingIteratorඞItem<'any, T = A!(Item<'any>)>
-        ,
-        $(
-            I : $($AutoTraits)+ ,
-        )?
+        Item : HKT,
+        I : LendingIteratorDyn<Item = CanonicalHKT<Item>>,
+        I : $($AutoTraits)* ,
     {
-        fn coerce (self: Self)
-          -> Box<dynLendingIterator<'I, CanonicalHKT<Item>, ($(dyn $($AutoTraits)+)?)>>
+        fn coerce (self: I)
+          -> Box<dyn
+                'I + LendingIteratorDyn<Item = CanonicalHKT<Item>> +
+                $($AutoTraits)*
+            >
         {
             Box::new(self)
         }
@@ -458,6 +486,7 @@ macro_rules! pervasive_hkt_choices {(
     $(
         ($map:ident, $Map:ident)(
             $(
+                $([$attr:meta])*
                 $fname:ident: [$($R:tt)*] [$HKT:ty] -> $Ret:ty,
             )*
         ),
@@ -465,6 +494,7 @@ macro_rules! pervasive_hkt_choices {(
 ) => (
     $(
         $(
+            $([$attr])*
             fn $fname<$($R)*, F> (
                 self: Self,
                 f: F,
@@ -483,3 +513,6 @@ macro_rules! pervasive_hkt_choices {(
         )*
     )*
 )} use pervasive_hkt_choices;
+
+#[cfg(test)]
+mod tests;

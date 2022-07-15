@@ -47,3 +47,34 @@ where
         self.iter.next().and_then(|item| (self.map)([], item))
     }
 }
+
+pub
+struct AndThenIntoIter<I, F>
+(
+    pub(in crate) I,
+    pub(in crate) F,
+)
+where
+    I : LendingIterator,
+    for<'any>
+        F : crate::utils::FnMut<Item<'any, I>>
+    ,
+;
+
+impl<I, F, R>
+    Iterator
+for
+    AndThenIntoIter<I, F>
+where
+    I : LendingIterator,
+    F : FnMut(Item<'_, I>) -> Option<R>,
+{
+    type Item = R;
+
+    fn next (
+        self: &'_ mut AndThenIntoIter<I, F>,
+    ) -> Option<R>
+    {
+        self.0.next().and_then(&mut self.1)
+    }
+}
