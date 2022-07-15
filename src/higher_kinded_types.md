@@ -428,7 +428,7 @@ HKTs come into play the moment we need "generic generics".
 
 </details>
 
-## Back to real Rust
+### How? → Back to real Rust
 
 <details><summary>Click to see</summary>
 
@@ -562,7 +562,7 @@ This, in real Rust, comes with three challenges:
 
     More on this below.
 
-### The HKT API of this crate
+#### The HKT API of this crate
 
 This crate needs HKTs to express some of the APIs involved with the iterator
 adaptors.
@@ -601,7 +601,7 @@ crate.
 
 </details>
 
-# The three important things to work with these HKT APIs
+## The three important things to remember when working with these HKT APIs
 
 <details open><summary>Click to hide</summary>
 
@@ -693,11 +693,11 @@ crate.
     <code>dyn for\<\'lt\> [WithLifetime]\<\'lt, T = …\></code> type, but wrapped
     in a `PhantomData`-like data structure (dubbed `HKT` as well), thanks to a
     blanket impl on them. This allows the macro to synthesize `Sized`
-    implementors of `HKT`, which thus allows for the callee signature to be
-    alleviated thanks to it.
+    implementors of [`HKT`], which thus allows for the callee signature to be
+    alleviated thanks to it: it allows the callees / the called APIs to skip the
+    noisy `?Sized` unbounds on already heavy signatures).
 
-    (thus allowing the callees / the called APIs to skip the noisy `?Sized`
-    unbounds on already heavy signatures).
+[`HKT`]: trait@HKT
 
 </details>
 

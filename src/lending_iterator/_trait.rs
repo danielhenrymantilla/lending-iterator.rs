@@ -406,43 +406,52 @@ where
         IntoIter(self)
     }
 
-    // #[apply(cfg_boxed)]
-    fn dyn_boxed<'usability >( //, Item : HKT> (
+    fn dyn_boxed<'usability> (
         self: Self
-    ) -> alloc::boxed::Box<dynLendingIterator<'usability, HKTItem<Self>>> // HKT!(<'n> => A!(Item<'n>))>>
+    ) -> Box<dyn 'usability + DynLendingIterator<Item = HKTItem<Self>>>
     where
         Self : 'usability,
         Self : Sized,
-        // for<'any>
-        //     Self : LendingIteratorඞItem<'any, T = A!(Item<'any>)>
-        // ,
     {
-        // fn helper<'usability, Item, State, Next> (
-        //     f: FromFn<Item, State, Next>
-        // ) -> alloc::boxed::Box<dynLendingIterator<'usability, Item>>
-        // where
-        //     Item : 'usability,
-        //     State : 'usability,
-        //     Next : 'usability,
-        //     Item : HKT,
-        //     Next : FnMut(&'_ mut State) -> Option< A!(Item<'_>) >,
-        // {
-        //     alloc::boxed::Box::new(f)
-        //         as alloc::boxed::Box<dynLendingIterator<'usability, HKTItem<FromFn<Item, State, Next>>>>
-        //         as alloc::boxed::Box<dynLendingIterator<'usability, HKT!(A!(Item<'_>)) >>
-        // }
+        Box::new(self)
+    }
 
-        alloc::boxed::Box::new(self) /* from_fn::<Item, _, _>(
-            self,
-            |it: &mut Self| -> Option<A!(Item<'_>)> {
-                // let _: A!(Item<'_>) = it.next().unwrap();
-                it.next()
-                // todo!()
-            },
-        ));
-        todo!() */
+    fn dyn_boxed_auto<BoxedDynLendingIterator, Item : HKT> (self: Self)
+      -> BoxedDynLendingIterator
+    where
+        Self : Sized + MyCoerce<BoxedDynLendingIterator, Item>,
+    {
+        Self::coerce(self)
     }
 }
+)}
+pub
+trait MyCoerce<T, Item> {
+    fn coerce(self: Self) -> T;
+}
+r#dyn::with_auto_traits! {( $($($AutoTraits:tt)+)? ) => (
+    impl<'I, I, Item : HKT>
+        MyCoerce<
+            Box<dyn 'I $(+ $($AutoTraits)+)? + DynLendingIterator<Item = CanonicalHKT<Item>>>,
+            Item,
+        >
+    for
+        I
+    where
+        I : 'I + LendingIterator,
+        for<'any>
+            I : LendingIteratorඞItem<'any, T = A!(Item<'any>)>
+        ,
+        $(
+            I : $($AutoTraits)+ ,
+        )?
+    {
+        fn coerce (self: Self)
+          -> Box<dynLendingIterator<'I, CanonicalHKT<Item>, ($(dyn $($AutoTraits)+)?)>>
+        {
+            Box::new(self)
+        }
+    }
 )}
 
 macro_rules! pervasive_hkt_choices {(

@@ -225,8 +225,8 @@ macro_rules! ඞ_munch_Apply {
     );
 }
 
-/// Projects an arbitrary <code>impl [HKT]</code> into the [`HKT!`] "canonical"
-/// (η-expanded) form (eta-expansion).
+/// \[eta-expansion\] Projects an arbitrary <code>impl [HKT]</code> into the
+/// [`HKT!`] "canonical" (η-expanded) form.
 ///
 ///   - To illustrate, let's consider a non-canonical <code>impl [HKT]</code>
 ///     type:
@@ -312,8 +312,8 @@ macro_rules! ඞ_munch_Apply {
     ``` */
 ///
 /// If we un-comment the above `CanonicalHKT` alias which shadows it with a
-/// no-op, or if we remove the `CanonicalHKT`s from the snippet above, we get
-/// the following error message:
+/// no-op (_i.e._, if we remove the `CanonicalHKT`s from the snippet above
+/// altogether), we get the following error message:
 ///
 /**  - ```console
     error[E0308]: mismatched types
@@ -339,10 +339,13 @@ macro_rules! ඞ_munch_Apply {
 /// # }
 /// ```
 ///
-/// These are [HKT!]-constructed <code>impl [HKT]</code> types, that is,
-/// <code>[CanonicalHKT]\<Item\></code> types (that is, the eta-expansion from
-/// `Item` to a `HKT!(<'n> => Item<'n>)`). As the error message shows, these
-/// types are considered (nominally) distinct.
+/// Contrary to the generic `Item` which may be of any shape, these types are
+/// [HKT!]-constructed <code>impl [HKT]</code> types, hence the type mismatch.
+///
+/// But if we lift `Item` so that it be, itself, an [HKT!]-constructed
+/// <code>impl [HKT]</code> type, that is, we use
+/// <code>[CanonicalHKT]\<Item\></code> rather than `Item`, we no longer are in
+/// that situation and thus avoid the issue.
 #[allow(type_alias_bounds)]
 pub type CanonicalHKT<T : ?Sized + HKT> = HKT!(Feed<'_, T>);
 

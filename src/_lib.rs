@@ -3,8 +3,11 @@
     feature(doc_notable_trait),
 )]
 #![no_std]
-// #![forbid(unsafe_code)]
-#![allow(uncommon_codepoints)]
+#![forbid(unsafe_code)]
+#![allow(nonstandard_style, uncommon_codepoints)]
+
+#[doc(inline)]
+pub use self::windows_mut::windows_mut;
 
 // #[macro_use]
 // extern crate higher_order_closure;
@@ -24,8 +27,6 @@ mod utils;
 pub
 mod higher_kinded_types;
 
-#[doc(inline)]
-pub use self::windows_mut::windows_mut;
 pub
 mod windows_mut;
 
