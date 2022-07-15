@@ -103,7 +103,7 @@ HKTs come into play the moment we need "generic generics".
 
   - #### Type-HKTs
 
-    <details open><summary>Click to hide</summary>
+    <details><summary>Click to show</summary>
 
     Consider the following pseudo-code:
 
@@ -263,7 +263,7 @@ HKTs come into play the moment we need "generic generics".
     The gist of the issue is that here, we'd like to say that `R = &str`, right?
 
     But such statement is wave-handed and overlooking a crucial aspect here:
-    **what is the lifetime in that `&str`?**
+    **what is the lifetime used in that `&str`?**
 
     It turns out that we can't really answer it: if we unsugar the `impl Fn`
     required signature, we have:
