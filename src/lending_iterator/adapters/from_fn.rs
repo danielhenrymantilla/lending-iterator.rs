@@ -1,24 +1,27 @@
 pub
-struct FromFn<State, Item, Next>
+struct FromFn<Item, State, Next>
 where
     Item : HKT,
     Next : FnMut(&'_ mut State) -> Option< A!(Item<'_>) >,
 {
-    pub(in crate)
+    pub
     state: State,
 
-    pub(in crate)
-    item_type: PhantomData<fn() -> Item>,
-
-    pub(in crate)
+    pub
     next: Next,
+
+    /// The signature of `fn next` in a `PhantomData`.
+    pub
+    _phantom: PhantomData<
+        fn(&mut State) -> Option<A!(Item<'_>)>,
+    >,
 }
 
 #[gat]
-impl<State, Item, Next>
+impl<Item, State, Next>
     LendingIterator
 for
-    FromFn<State, Item, Next>
+    FromFn<Item, State, Next>
 where
     Item : HKT,
     Next : FnMut(&'_ mut State) -> Option< A!(Item<'_>) >,
@@ -30,7 +33,7 @@ where
         A!(Item<'next>)
     ;
 
-    fn next (self: &'_ mut FromFn<State, Item, Next>)
+    fn next (self: &'_ mut FromFn<Item, State, Next>)
       -> Option< A!(Item<'_>) >
     {
         let Self { state, next, .. } = self;

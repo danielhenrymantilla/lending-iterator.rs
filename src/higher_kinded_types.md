@@ -691,7 +691,11 @@ crate.
 
     For those curious, the [`HKT!`] macro expands to a
     <code>dyn for\<\'lt\> [WithLifetime]\<\'lt, T = …\></code> type, but wrapped
-    in a `PhantomData` (thanks to a blanket impl on them), so as to be `Sized`
+    in a `PhantomData`-like data structure (dubbed `HKT` as well), thanks to a
+    blanket impl on them. This allows the macro to synthesize `Sized`
+    implementors of `HKT`, which thus allows for the callee signature to be
+    alleviated thanks to it.
+
     (thus allowing the callees / the called APIs to skip the noisy `?Sized`
     unbounds on already heavy signatures).
 

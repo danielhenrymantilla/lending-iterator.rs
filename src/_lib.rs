@@ -13,7 +13,7 @@
 // extern crate macro_rules_attribute;
 
 // #[macro_use]
-extern crate nougat;
+extern crate nougat as nou;
 
 #[macro_use]
 extern crate polonius_the_crab;
@@ -24,7 +24,12 @@ mod utils;
 pub
 mod higher_kinded_types;
 
-#[path = "lending_iterator/_mod.rs"]
+#[doc(inline)]
+pub use self::windows_mut::windows_mut;
+pub
+mod windows_mut;
+
+#[path = "lending_iterator/_trait.rs"]
 pub
 mod lending_iterator;
 
@@ -52,3 +57,17 @@ mod ඞ {
     cfg_attr(all(), doc = include_str!("compile_fail_tests.md")),
 )]
 mod _compile_fail_tests {}
+
+#[doc(hidden)] /** Not part of the public API */ pub
+enum HKT<T : ?Sized> {
+    HKT,
+    _ඞ((
+        ::never_say_never::Never,
+        ::core::marker::PhantomData<T>,
+    )),
+}
+#[doc(hidden)] /** Not part of the public API */ pub
+use HKT::*;
+
+// #[doc(hidden)] /** Not part of the public API */ pub
+// struct HKT<T : ?Sized>(fn(&T));

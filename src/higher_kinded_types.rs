@@ -5,14 +5,14 @@
 //!
 #![doc = include_str!("higher_kinded_types.md")]
 
-/// A trait to help express Higher Kinded Types.
+/// A trait to help express [Higher Kinded Types][self].
 ///
 /// Use `: HKT` as a trait bound when intending to received parameters such as
 /// `StringRefHkt` above.
 ///
 /// This can be useful when needing to nudge type inference so as to imbue
 /// closures with the appropriate higher-order signature that a fully generic
-/// signature, such as [`crate::lending_iterator::lending_iter_from_fn`]'s.
+/// signature, such as [`crate::lending_iterator::from_fn`]'s.
 ///
 /// See [the module documentation for more info][self].
 pub
@@ -24,13 +24,6 @@ impl<T : ?Sized> HKT for T
 where
     Self : for<'any> WithLifetime<'any>,
 {}
-
-impl<'lt, F : ?Sized, R> WithLifetime<'lt> for F
-where
-    F : FnOnce(&'lt ()) -> R,
-{
-    type T = R;
-}
 
 /// [`HKT`][trait@HKT]'s internals.
 ///
@@ -56,11 +49,13 @@ where
 ///     # }
 ///     ```
 ///
+///   - or <code>[Feed]\<\'lt, X\></code>
+///
 ///   - or <code>[Apply!]\(X\<\'lt\>\)</code>
 ///
 /// ### It can be used to manually implement `HKT`
 ///
-/// To `impl HKT` for some type, you can't do `impl HKT for MyType {`.
+/// To `impl HKT` for some type, you can't do `impl HKT for MyType`.
 /// Instead, you'd have to `impl<'lt> WithLifetime<'lt> for MyType`.
 ///
 ///   - But such use case is not strongly supported by this crate: it is thus
@@ -73,6 +68,7 @@ trait WithLifetime<'lt> {
     type T;
 }
 
+// Make it `PhantomData`-transitive, to allow instantiating _ad-hoc_ HKTs.
 impl<'lt, ImplHKT : ?Sized + HKT>
     WithLifetime<'lt>
 for
@@ -80,14 +76,26 @@ for
 {
     type T = Apply!(ImplHKT<'lt>);
 }
+// When only working in the type-level realm, using `PhantomData` yields very
+// long and heavy-weight paths for the HKT types.
+// Thence the usage of an aptly-named shorthand-wrapper.
+impl<'lt, ImplHKT : ?Sized + HKT>
+    WithLifetime<'lt>
+for
+    crate::HKT<ImplHKT>
+{
+    type T = Apply!(ImplHKT<'lt>);
+}
 
-/// _Ad-hoc_ `impl HKT` type.
+/// _Ad-hoc_ <code>impl [HKT][trait@HKT]</code> type.
+///
+/// See [the module documentation for more info][self] for more info.
 #[macro_export]
 macro_rules! HKT {
     (
         <$lt:lifetime> => $T:ty $(,)?
     ) => (
-        $crate::ඞ::PhantomData::<
+        $crate::HKT::<
             dyn for<$lt> $crate::higher_kinded_types::WithLifetime<$lt, T = $T>
         >
     );
@@ -211,12 +219,135 @@ macro_rules! ඞ_munch_Apply {
     (
         $($bad_input:tt)*
     ) => (
-        $crate::ඞ::compile_error! {
+        $crate::ඞ::core::compile_error! {
             "Usage: `Apply!(Type<'lifetime>)`"
         }
     );
 }
 
+/// Projects an arbitrary <code>impl [HKT]</code> into the [`HKT!`] "canonical"
+/// (η-expanded) form (eta-expansion).
+///
+///   - To illustrate, let's consider a non-canonical <code>impl [HKT]</code>
+///     type:
+///
+///     ```rust
+///      use ::lending_iterator::higher_kinded_types::*;
+///
+///      enum StrRef {}
+///      impl<'lt> WithLifetime<'lt> for StrRef {
+///          type T = &'lt str;
+///      }
+///     ```
+///
+///     Then, we have <code>StrRef : [HKT]</code> (and for any `'lt`,
+///     <code>[Apply!]\(StrRef\<\'lt\>\) = \&\'lt str</code>).
+///
+///     And yet, <code>StrRef ≠ [HKT!]\(\&str\)</code>, since the latter is
+///     actually something along the lines of
+///     `dyn for<'lt> WithLifetime<'lt, T = &'lt str>`, which is clearly not,
+///     **nominally**, our `StrRef` type.
+///
+///     This [`CanonicalHKT`] operation then represents an operation which
+///     "extracts" the inherent `HKT` semantics of the given `impl HKT` type
+///     (_e.g._, `<'n> => &'n str` for both `StrRef` and `HKT!(&str)`), to then
+///     wrap them into / apply them to / project them to a [HKT!] type (_e.g._,
+///     `HKT!(&str)`).
+///
+/// [HKT]: trait@HKT
+///
+/// It's a projection, in the mathematical sense, since the operation is
+/// _idempotent_: for any `T : HKT`,
+/// ```rust
+/// # #[cfg(any())] macro_rules! ignore {
+/// CanonicalHKT<CanonicalHKT<T>> = CanonicalHKT<T>
+/// # }
+/// ```
+///
+/// Proof:
+///  1. `CanonicalHKT<T> = HKT!(hkt-ness of T)`;
+///  1. `CanonicalHKT<U = HKT!(…)> = HKT!(hkt-ness of HKT!(…)) = HKT!(…) = U`.
+///  1. Replace with `U = CanonicalHKT<T>`.
+///
+/// Thence the usefulness of this tool: given a generic `Item : HKT`, certain
+/// "round-tripping" operations such as going from [`LendingIterator`] to
+/// [`dynLendingIterator`] "and back" is unlikely to have kept the very same
+/// HKT type in place: it may itself have "suffered" from a `CanonicalHKT`
+/// lift-up by such process.
+///
+/// [`LendingIterator`]: crate::lending_iterator::LendingIterator
+/// [`dynLendingIterator`]: crate::lending_iterator::dynLendingIterator
+///
+/// Thus, APIs expecting to work with such things may avoid compile errors by
+/// preventively `CanonicalHKT`-lifting their own `Item : HKT` types in the
+/// signatures… 😅
+///
+/// # Example
+///
+/**  - ```rust
+    use ::lending_iterator::{
+        higher_kinded_types::{*, Apply as A},
+        lending_iterator::*,
+    };
+
+    fn unify<'usability, I, J, Item> (i: I, j: J)
+      -> [Box<dynLendingIterator<'usability, CanonicalHKT<Item>>>; 2]
+                                //           ^^^^^^^^^^^^^    ^
+                                // without it, this snippet would fail to compile.
+    where
+        Item : HKT,
+        I : LendingIterator,
+        J : LendingIterator,
+        I : 'usability + for<'any> LendingIteratorඞItem<'any, T = A!(Item<'any>)>,
+        J : 'usability + for<'any> LendingIteratorඞItem<'any, T = A!(Item<'any>)>,
+    {
+        [
+            i.dyn_boxed(),
+            j.dyn_boxed(),
+        ]
+    }
+
+    // Uncomment this to make the above function fail.
+    // type CanonicalHKT<T> = T;
+    ``` */
+///
+/// If we un-comment the above `CanonicalHKT` alias which shadows it with a
+/// no-op, or if we remove the `CanonicalHKT`s from the snippet above, we get
+/// the following error message:
+///
+/**  - ```console
+    error[E0308]: mismatched types
+      --> src/higher_kinded_types.rs:300:9
+       |
+    9  | fn unify<'usability, I, J, Item> (i: I, j: J)
+       |                            ---- this type parameter
+    ...
+    21 |         i.dyn_boxed(),
+       |         ^^^^^^^^^^^^^ expected type parameter `Item`, found enum `lending_iterator::HKT`
+       |
+       = note: expected struct `Box<(dyn DynLendingIterator<Item = Item> + 'usability)>`
+                  found struct `Box<dyn DynLendingIterator<Item = lending_iterator::HKT<(dyn for<'ඞ> WithLifetime<'ඞ, for<'ඞ> T = <Item as WithLifetime<'ඞ>>::T> + 'static)>>>`
+    ``` */
+///
+/// Mostly, notice the mismatch with `Item`:
+///
+/// ```rust
+/// # #[cfg(any())] macro_rules! ignore {
+/// lending_iterator::HKT<(dyn for<'ඞ> WithLifetime<'ඞ, /* for<'ඞ> */ T = <Item as WithLifetime<'ඞ>>::T> + 'static)>
+/// // i.e.
+/// HKT!(<'n> => Apply!(Item<'n>))
+/// # }
+/// ```
+///
+/// These are [HKT!]-constructed <code>impl [HKT]</code> types, that is,
+/// <code>[CanonicalHKT]\<Item\></code> types (that is, the eta-expansion from
+/// `Item` to a `HKT!(<'n> => Item<'n>)`). As the error message shows, these
+/// types are considered (nominally) distinct.
+#[allow(type_alias_bounds)]
+pub type CanonicalHKT<T : ?Sized + HKT> = HKT!(Feed<'_, T>);
+
 #[doc(inline)]
-pub use crate::{HKT, Apply};
-// type Foo<T, 'lt> = <T as WithLifetime<'lt>>::T;
+pub use macro_imports_helper::{Apply, HKT};
+mod macro_imports_helper {
+    pub use {Apply, HKT};
+}

@@ -1,10 +1,13 @@
 use super::*;
 
 match_! {(
+    and_then,
     filter,
     from_fn,
+    from_iter,
     fuse,
-    map_and_then,
+    into_iter,
+    map,
     skip,
     take,
 ) {(
