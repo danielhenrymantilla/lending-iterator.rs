@@ -44,7 +44,7 @@ where
 ///
 /// WITH MISSING `Sync`!
 ///
-/**  - ```rust
+/**  - ```rust ,compile_fail
     use ::lending_iterator::{
         higher_kinded_types::*,
         lending_iterator::*,
