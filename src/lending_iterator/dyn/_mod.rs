@@ -88,49 +88,6 @@ trait LendingIteratorDyn {
         self: &'_ mut Self,
     ) -> Option<A!(Self::Item<'_>)>
     ;
-
-    #[cfg(any())]
-    /// Like [`LendingIterator::by_ref`], but `dyn`-friendly.
-    ///
-    /// Can be convenient to allow usage of `where Self : Sized` methods when
-    /// dealing with a `Box<dyn LendingIteratorDyn…>`:
-    ///
-    /**  - ```rust ,compile_fail
-    use ::lending_iterator::prelude::*;
-
-    fn this_fails<'lt, Item : HKT> (
-        mut it: Box<dyn 'lt + LendingIteratorDyn<Item = Item>>,
-    )
-    {
-        // Error, the `for_each` method cannot be invoked on a trait object.
-        it.for_each(|_| ());
-    }
-    ``` */
-    ///
-    /**    ```console
-    error: the `for_each` method cannot be invoked on a trait object
-       --> src/lending_iterator/dyn.rs:93:8
-        |
-    14  |       it.for_each(|_| ());
-    ``` */
-    ///
-    /**  - ```rust
-    use ::lending_iterator::prelude::*;
-
-    fn this_works<'lt, Item : HKT> (
-        mut it: Box<dyn 'lt + LendingIteratorDyn<Item = Item>>,
-    )
-    {
-        // OK.
-        it.by_ref_dyn().for_each(|_| ()); // `(&mut *it).for_each…` ought to work as well.
-    }
-    ``` */
-    fn by_ref_dyn<'usability> (
-        self: &'_ mut Self,
-    ) -> &'_ mut (dyn 'usability + LendingIteratorDyn<Item = Self::Item>)
-    where
-        Self : 'usability,
-    ;
 }
 
 /// `impl LendingIterator : LendingIteratorDyn`
@@ -146,16 +103,6 @@ for
     ) -> Option<A!(HKTItem<T><'n>)> // a pinch of curry for its flavor 😗👌
     {
         self.next()
-    }
-
-    #[cfg(any())]
-    fn by_ref_dyn<'usability> (
-        self: &'_ mut Self,
-    ) -> &'_ mut (dyn 'usability + LendingIteratorDyn<Item = Self::Item>)
-    where
-        Self : 'usability,
-    {
-        self
     }
 }
 

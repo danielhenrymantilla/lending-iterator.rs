@@ -1,4 +1,7 @@
-use super::*;
+use {
+    crate as lending_iterator,
+    super::*,
+};
 
 #[test]
 fn inlined_windows_mut ()
@@ -7,8 +10,8 @@ fn inlined_windows_mut ()
     let slice = &mut array[..];
     let mut start = 0;
     let mut window_iter =
-        from_fn::<HKT!(&mut [u8]), _, _>(slice, |it| Some(it))
-            .and_then::<HKT!(&mut [u8]), _>(|[], slice| Some({
+        lending_iterator::from_fn::<HKT!(&mut [u8]), _, _>(slice, |it| Some(it))
+            .filter_map::<HKT!(&mut [u8]), _>(|[], slice| Some({
                 let to_yield = slice.get_mut(start ..)?.get_mut(..2)?;
                 start += 1;
                 to_yield

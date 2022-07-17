@@ -3,7 +3,10 @@ use {
     ::alloc::{
         boxed::Box,
     },
-    super::*,
+    crate::{
+        self as lending_iterator,
+        prelude::*,
+    },
     self::CanonicalHKT as Eta,
 };
 
@@ -12,7 +15,7 @@ fn check<'r, T> (slice: &'r mut [T])
   -> Box<dyn 'r + LendingIteratorDyn<Item = HKT!(&mut [T; 1])>>
 {
     if true {
-        from_fn::<HKT!(&mut [T; 1]), _, _>(
+        lending_iterator::from_fn::<HKT!(&mut [T; 1]), _, _>(
             slice.iter_mut(),
             |iter| iter.next().map(::core::array::from_mut),
         )
@@ -39,8 +42,7 @@ where
     > =
         i.dyn_boxed_auto()
     ;
-    i   .by_ref_dyn()
-        .fold((), |(), _| ());
+    i.fold((), |(), _| ());
 }
 
 /// ### Example: `dyn` coercion of a _fully generic_ `LendingIterator`:
