@@ -32,7 +32,7 @@ pub
 mod constructors;
 
 use r#dyn::*;
-#[path = "dyn.rs"]
+#[path = "dyn/_mod.rs"]
 pub(in crate)
 mod r#dyn;
 

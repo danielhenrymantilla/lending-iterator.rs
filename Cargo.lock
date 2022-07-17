@@ -57,9 +57,9 @@ checksum = "cf5a574dadd7941adeaa71823ecba5e28331b8313fb2e1c6a5c7e5981ea53ad6"
 
 [[package]]
 name = "nougat"
-version = "0.2.0-rc2"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d0a5f8509b48958c7312cbd83bed0132b98c3fdc8c65a2571e8cd6086bb64f6"
+checksum = "f6d775a72d9e4c88558229908a771a4c5216758989ad7a275a9eb033d16aa24d"
 dependencies = [
  "macro_rules_attribute",
  "nougat-proc_macros",
@@ -67,9 +67,9 @@ dependencies = [
 
 [[package]]
 name = "nougat-proc_macros"
-version = "0.2.0-rc2"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6698c3c28dfd541a4477d0d642f5eb15eabac1f2f320c04055f12fe9e44e1e4e"
+checksum = "bfa3602384fbe353b26b15958a05490c6bfb2ad6569a0d4f8ffca0a23b716979"
 dependencies = [
  "proc-macro2",
  "quote",

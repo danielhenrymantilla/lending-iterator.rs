@@ -247,5 +247,4 @@ macro_rules! with_auto_traits {( $($rules:tt)* ) => (
 )} pub(in crate) use with_auto_traits;
 
 #[cfg(any(doc, test))]
-#[path = "dyn/tests.rs"]
 mod tests;
