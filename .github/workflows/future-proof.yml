@@ -52,5 +52,7 @@ jobs:
       - name: Cargo test (embed `README.md` + UI)
         if: matrix.rust-toolchains != '1.57.0'
         uses: actions-rs/cargo@v1
+        env:
+          RUSTC_BOOTSTRAP: 1
         with:
           command: test-ui
