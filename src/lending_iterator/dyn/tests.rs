@@ -1,7 +1,10 @@
 #![allow(unused)]
-use super::*;
 use {
-    CanonicalHKT as Eta,
+    ::alloc::{
+        boxed::Box,
+    },
+    super::*,
+    self::CanonicalHKT as Eta,
 };
 
 // Check `dyn`-unification when dealing with a non-generic way of lending.
@@ -45,10 +48,7 @@ where
 /// WITH MISSING `Sync`!
 ///
 /**  - ```rust ,compile_fail
-    use ::lending_iterator::{
-        higher_kinded_types::*,
-        lending_iterator::*,
-    };
+    use ::lending_iterator::prelude::*;
 
     fn coercions<'T, Item, T> (it: T)
     where

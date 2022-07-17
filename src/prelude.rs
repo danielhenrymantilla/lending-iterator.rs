@@ -5,6 +5,7 @@ pub use {
             IntoLendingIterator,
             Item,
             LendingIterator,
+            LendingIteratorDyn,
         },
         higher_kinded_types::{
             Apply,
@@ -12,7 +13,10 @@ pub use {
             Feed,
             HKT,
             HKTItem,
+            HKTRef,
+            HKTRefMut,
         },
+        windows_mut,
     },
 };
 

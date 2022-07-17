@@ -6,7 +6,7 @@ mod macros;
 pub
 trait FnMut<Arg>
 where
-Self : ::core::ops::FnMut(Arg) -> Self::Ret,
+    Self : ::core::ops::FnMut(Arg) -> Self::Ret,
 {
     type Ret;
 }

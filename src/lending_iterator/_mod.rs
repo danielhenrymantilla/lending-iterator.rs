@@ -27,67 +27,16 @@ pub use self::{
 pub
 mod adapters;
 
+#[path = "constructors/_mod.rs"]
+pub
+mod constructors;
+
 use r#dyn::*;
 #[path = "dyn.rs"]
 pub(in crate)
 mod r#dyn;
 
 mod impls;
-
-pub
-mod windows_mut;
-
-pub
-fn from_iter<I : IntoIterator> (it: I)
-  -> FromIter<I::IntoIter>
-{
-    it.into_iter().into_lending_iter()
-}
-
-#[allow(type_alias_bounds)]
-/// `generic_associated_types`-agnostic shorthand for
-/// <code>\<I as [LendingIterator]\>::Item\<\'lt\></code>
-pub
-type Item<'lt, I : LendingIterator> =
-    Gat!(<I as LendingIterator>::Item<'lt>)
-;
-
-pub
-fn from_fn<Item, State, Next> (
-    state: State,
-    next: Next,
-) -> FromFn<Item, State, Next>
-where
-    Item : HKT,
-    Next : FnMut(&'_ mut State) -> Option< A!(Item<'_>) >,
-{
-    FromFn { state, _phantom: <_>::default(), next }
-}
-
-pub
-trait IntoLendingIterator : IntoIterator + Sized {
-    fn into_lending_iter (
-        self: Self,
-    ) -> FromIter<Self::IntoIter>
-    {
-        impl<T : IntoIterator> IntoLendingIterator for T {}
-        FromIter(self.into_iter())
-    }
-}
-
-// dyn::DynCoercions<
-//     HKT!(&mut [T; WINDOW_SIZE]),
-//     // vs.
-//     HKTItem<
-//         WindowsMut<&'lt mut [T], WINDOW_SIZE>
-//     >
-//     // i.e.
-//     HKT!(Item<'_, WindowsMut<&'lt mut [T], WINDOW_SIZE>>)
-//     // i.e.
-//     HKT!()
-// >
-// for
-// WindowsMut<&'lt mut [T], WINDOW_SIZE>
 
 macro_rules! with_cfg_better_docs {( $($rules:tt)* ) => (
     macro_rules! __emit__ { $($rules)* }
@@ -123,6 +72,14 @@ $($($if_better_docs)?
         type T;
     }
 )?
+
+#[allow(type_alias_bounds)]
+/// `generic_associated_types`-agnostic shorthand for
+/// <code>\<I as [LendingIterator]\>::Item\<\'lt\></code>
+pub
+type Item<'lt, I : LendingIterator> =
+    Gat!(<I as LendingIterator>::Item<'lt>)
+;
 
 $($($if_not_better_docs)?
     #[gat]
@@ -366,6 +323,24 @@ where
         Map { iter: self, map: f, _phantom_ty: <_>::default() }
     }
 
+    pervasive_hkt_choices! {
+        (map, Map)(
+            map_to_ref: [R : ?Sized], HKTRef<R>, -> &'any R,
+            map_to_mut: [R : ?Sized], HKTRefMut<R>, -> &'any mut R,
+        ),
+    }
+
+    fn map_into_iter<F, Owned> (
+        self: Self,
+        f: F,
+    ) -> MapIntoIter<Self, F>
+    where
+        F : FnMut(Item<'_, Self>) -> Owned,
+        Self : Sized,
+    {
+        MapIntoIter(self, f)
+    }
+
     fn and_then<NewItemType : HKT, F> (
         self: Self,
         f: F,
@@ -383,27 +358,10 @@ where
     }
 
     pervasive_hkt_choices! {
-        (map, Map)(
-            map_to_ref: [R : ?Sized] [&'any R] -> &'any R,
-            map_to_mut: [R : ?Sized] [&'any mut R] -> &'any mut R,
-            // map_to_owned: [R] [R] -> R,
-        ),
         (and_then, AndThen)(
-            and_then_to_ref: [R : ?Sized] [&'any R] -> Option<&'any R>,
-            and_then_to_mut: [R : ?Sized] [&'any mut R] -> Option<&'any mut R>,
-            // and_then_to_owned: [R] [R] -> Option<R>,
+            and_then_to_ref: [R : ?Sized], HKTRef<R>, -> Option<&'any R>,
+            and_then_to_mut: [R : ?Sized], HKTRefMut<R>, -> Option<&'any mut R>,
         ),
-    }
-
-    fn map_into_iter<F, Owned> (
-        self: Self,
-        f: F,
-    ) -> MapIntoIter<Self, F>
-    where
-        F : FnMut(Item<'_, Self>) -> Owned,
-        Self : Sized,
-    {
-        MapIntoIter(self, f)
     }
 
     fn and_then_into_iter<F, Owned> (
@@ -430,12 +388,14 @@ where
     #[apply(cfg_alloc)]
     fn dyn_boxed<'usability> (
         self: Self
-    ) -> Box<dyn 'usability + LendingIteratorDyn<Item = HKTItem<Self>>>
+    ) -> ::alloc::boxed::Box<dyn
+            'usability + LendingIteratorDyn<Item = HKTItem<Self>>
+        >
     where
         Self : 'usability,
         Self : Sized,
     {
-        Box::new(self)
+        ::alloc::boxed::Box::new(self)
     }
 
     fn dyn_boxed_auto<BoxedDynLendingIterator, Item : HKT> (self: Self)
@@ -448,46 +408,12 @@ where
 }
 )}
 
-#[doc(hidden)] // Let's not overwhelm users of the crate with info.
-pub
-trait DynCoerce<T, Item> : Sized {
-    fn coerce(self: Self) -> T;
-}
-
-#[apply(cfg_alloc)]
-r#dyn::with_auto_traits! {( $($AutoTraits:tt)* ) => (
-    impl<'I, I : 'I, Item>
-        DynCoerce<
-            Box<dyn
-                'I + LendingIteratorDyn<Item = CanonicalHKT<Item>> +
-                $($AutoTraits)*
-            >,
-            Item,
-        >
-    for
-        I
-    where
-        Item : HKT,
-        I : LendingIteratorDyn<Item = CanonicalHKT<Item>>,
-        I : $($AutoTraits)* ,
-    {
-        fn coerce (self: I)
-          -> Box<dyn
-                'I + LendingIteratorDyn<Item = CanonicalHKT<Item>> +
-                $($AutoTraits)*
-            >
-        {
-            Box::new(self)
-        }
-    }
-)}
-
 macro_rules! pervasive_hkt_choices {(
     $(
         ($map:ident, $Map:ident)(
             $(
                 $([$attr:meta])*
-                $fname:ident: [$($R:tt)*] [$HKT:ty] -> $Ret:ty,
+                $fname:ident: [$($R:tt)*], $HKT:ty, -> $Ret:ty,
             )*
         ),
     )*
@@ -498,7 +424,7 @@ macro_rules! pervasive_hkt_choices {(
             fn $fname<$($R)*, F> (
                 self: Self,
                 f: F,
-            ) -> $Map<Self, F, HKT!(<'any> => $HKT)>
+            ) -> $Map<Self, F, $HKT>
             where
                 for<'any>
                     F : FnMut(
@@ -508,11 +434,22 @@ macro_rules! pervasive_hkt_choices {(
                 ,
                 Self : Sized,
             {
-                self.$map::<HKT!(<'any> => $HKT), F>(f)
+                self.$map::<$HKT, F>(f)
             }
         )*
     )*
 )} use pervasive_hkt_choices;
+
+pub
+trait IntoLendingIterator : IntoIterator + Sized {
+    fn into_lending_iter (
+        self: Self,
+    ) -> constructors::FromIter<Self::IntoIter>
+    {
+        impl<T : IntoIterator> IntoLendingIterator for T {}
+        constructors::FromIter(self.into_iter())
+    }
+}
 
 #[cfg(test)]
 mod tests;

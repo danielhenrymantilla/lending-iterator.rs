@@ -1,3 +1,8 @@
+/*!
+[`windows_mut()`]: windows_mut
+[HKT!]: higher_kinded_types::HKT!
+[higher-kinded]: higher_kinded_types
+*/
 #![cfg_attr(feature = "better-docs",
     cfg_attr(all(), doc = include_str!("../README.md")),
     feature(doc_cfg, doc_notable_trait),
@@ -8,23 +13,26 @@
 #![forbid(unsafe_code)]
 #![allow(nonstandard_style, uncommon_codepoints)]
 
-#[cfg(feature = "alloc")]
-extern crate alloc;
-
 #[doc(inline)]
 pub use self::{
     lending_iterator::{
-        from_fn,
-        from_iter,
         LendingIterator,
-        windows_mut::windows_mut,
+        constructors::{
+            FromFn,
+            from_fn,
+            from_iter,
+            repeat,
+            windows_mut,
+        },
     },
 };
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 #[macro_use]
 extern crate macro_rules_attribute;
 
-// #[macro_use]
 extern crate nougat as nou;
 
 #[macro_use]
@@ -50,7 +58,6 @@ mod ඞ {
     pub use {
         ::core::{ // or `std`
             self,
-            marker::PhantomData,
         },
         ::lending_iterator_proc_macros::{
             self,

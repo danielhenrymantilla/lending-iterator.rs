@@ -15,9 +15,9 @@ struct WindowsMut<Slice, const WINDOW_SIZE: usize> {
     start: usize,
 }
 
-#[nou::gat]
+#[gat]
 impl<'lt, T, const WINDOW_SIZE: usize>
-    crate::lending_iterator::LendingIterator
+    LendingIterator
 for
     WindowsMut<&'lt mut [T], WINDOW_SIZE>
 {

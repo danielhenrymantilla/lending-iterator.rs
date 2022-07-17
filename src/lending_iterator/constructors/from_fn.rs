@@ -1,4 +1,16 @@
 pub
+fn from_fn<Item, State, Next> (
+    state: State,
+    next: Next,
+) -> FromFn<Item, State, Next>
+where
+    Item : HKT,
+    Next : FnMut(&'_ mut State) -> Option< A!(Item<'_>) >,
+{
+    FromFn { state, next, _phantom: <_>::default() }
+}
+
+pub
 struct FromFn<Item, State, Next>
 where
     Item : HKT,

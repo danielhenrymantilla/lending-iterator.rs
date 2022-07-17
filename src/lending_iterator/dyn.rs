@@ -34,10 +34,7 @@ use super::*;
 /// ### Example: `dyn` coercion of a _fully generic_ `LendingIterator`:
 ///
 /**  - ```rust
-    use ::lending_iterator::{
-        higher_kinded_types::*,
-        lending_iterator::*,
-    };
+    use ::lending_iterator::prelude::*;
 
     fn coercions<'T, Item, T> (it: T)
     where
@@ -75,7 +72,7 @@ pub
 trait LendingIteratorDyn {
     type Item : ?Sized + HKT;
 
-    fn next (
+    fn dyn_next (
         self: &'_ mut Self,
     ) -> Option<A!(Self::Item<'_>)>
     ;
@@ -86,10 +83,7 @@ trait LendingIteratorDyn {
     /// dealing with a `Box<dyn LendingIteratorDyn…>`:
     ///
     /**  - ```rust ,compile_fail
-    use ::lending_iterator::{
-        higher_kinded_types::*,
-        lending_iterator::*,
-    };
+    use ::lending_iterator::prelude::*;
 
     fn this_fails<'lt, Item : HKT> (
         mut it: Box<dyn 'lt + LendingIteratorDyn<Item = Item>>,
@@ -108,10 +102,7 @@ trait LendingIteratorDyn {
     ``` */
     ///
     /**  - ```rust
-    use ::lending_iterator::{
-        higher_kinded_types::*,
-        lending_iterator::*,
-    };
+    use ::lending_iterator::prelude::*;
 
     fn this_works<'lt, Item : HKT> (
         mut it: Box<dyn 'lt + LendingIteratorDyn<Item = Item>>,
@@ -137,11 +128,11 @@ for
 {
     type Item = HKTItem<T>;
 
-    fn next<'n> (
+    fn dyn_next<'n> (
         self: &'n mut T,
     ) -> Option<A!(HKTItem<T><'n>)> // a pinch of curry for its flavor 😗👌
     {
-        LendingIterator::next(self)
+        self.next()
     }
 
     fn by_ref_dyn<'usability> (
@@ -181,124 +172,68 @@ with_auto_traits! {( $($AutoTraits:tt)* ) => (
             ),
         ) -> Option<A!(Item<'next>)> // Self::Item<'_>>
         {
-            LendingIteratorDyn::next(self)
+            self.dyn_next()
         }
     }
 )}
 
-// Feed<'n, HKTItem<T>> = Feed<'n, HKT!(<'n> => Item<'n, T>)> = Item<'n, T>;
+/// "Lift" and convert an <code>impl [LendingIterator]</code> into an
+/// <code>impl [HKT][trait@HKT]</code>.
+///
+/// ```rust
+/// # #[cfg(any())] macro_rules! ignore {
+/// type HKTItem<I : LendingIterator> = HKT!(Item<'_, I>);
+/// # }
+/// ```
+///
+///   - It is therefore a [`CanonicalHKT`] (no need to apply it again).
+///
+/// The main property of this alias, and thus the connection between
+/// <code>impl [LendingIterator]</code>s and <code>impl [HKT][trait@HKT]</code>,
+/// is that:
+///
+/// ```rust
+/// # #[cfg(any())] macro_rules! ignore {
+/// // Given some `<'n, I : LendingIterator>`:
+/// Apply!(HKTItem<I><'n>) = Feed<'n, HKT!(Item<'_, T>)> = Item<'n, I>
+/// # }
+/// ```
 #[allow(type_alias_bounds)]
 pub
 type HKTItem<I : ?Sized + LendingIterator> =
     HKT!(Item<'_, I>)
 ;
 
-#[cfg(feature = "alloc")]
-pub(crate) use alloc::boxed::Box;
-
-#[cfg(any())]
 #[doc(hidden)] // Let's not overwhelm users of the crate with info.
 pub
-trait OntoLendingIteratorDyn<
-        'usability,
-        Item,
-        ImplicitBounds = &'usability Item,
-    >
-{
-    type T
-    :
-        ?Sized +
-        'usability +
-        LendingIteratorDyn<Item = Item> +
-    ;
+trait DynCoerce<T, Item> : Sized {
+    fn coerce(self: Self) -> T;
 }
 
-#[cfg(any())]
-with_auto_traits! {( $($($AutoTraits:tt)+)? ) => (
-    impl<'usability, Item : HKT>
-        OntoLendingIteratorDyn<'usability, Item>
+#[apply(cfg_alloc)]
+r#dyn::with_auto_traits! {( $($AutoTraits:tt)* ) => (
+    impl<'I, I : 'I, Item>
+        DynCoerce<
+            ::alloc::boxed::Box<dyn
+                'I + LendingIteratorDyn<Item = CanonicalHKT<Item>> +
+                $($AutoTraits)*
+            >,
+            Item,
+        >
     for
-        ($(dyn $($AutoTraits)+)?)
-    {
-        type T = dyn 'usability $(+ $($AutoTraits)+)? + LendingIteratorDyn<Item = Item>;
-    }
-)}
-
-#[cfg(any())]
-/// Convenience shorthand alias for
-/// `dyn 'usability + LendingIteratorDyn<Item = Item> + AutoTraits…`
-///
-/// Mainly:
-///
-/**  - ```rust
-    # #[cfg(any())] macro_rules! ignore {
-    type dynLendingIterator<'usability, Item> =
-        dyn 'usability + LendingIteratorDyn<Item = Item>
-    ;
-    # }
-    ``` */
-///
-/**  - ```rust
-    # #[cfg(any())] macro_rules! ignore {
-    type dynLendingIterator<'usability, Item, dyn Send> =
-        dyn 'usability + LendingIteratorDyn<Item = Item> + Send
-    ;
-    # }
-    ``` */
-///
-///  - And so on for `dyn Sync` and `dyn Send + Sync`.
-#[allow(nonstandard_style, type_alias_bounds)]
-#[doc(hidden)] // Let's not overwhelm users of the crate with info.
-pub
-type dynLendingIterator<'usability, Item, AutoTraits : ?Sized = ()> =
-    <AutoTraits as OntoLendingIteratorDyn<'usability, Item>>::T
-;
-
-#[cfg(any())]
-pub
-trait AsRefDynLendingIterator<Item : HKT, AutoTraits : ?Sized> {
-    fn dyn_ref_auto<'r, 'T> (
-        self: &'r mut Self,
-    ) -> &'r mut dynLendingIterator<'T, Item, AutoTraits>
+        I
     where
-        Self : 'T,
-        AutoTraits : OntoLendingIteratorDyn<'T, Item>,
-    ;
-}
-
-#[cfg(any())]
-with_auto_traits! {( $($($AutoTraits:tt)+)? ) => (
-    impl<T>
-        AsRefDynLendingIterator<HKTItem<Self>, ($(dyn $($AutoTraits)+)?)>
-    for
-        T
-    where
-        T : LendingIterator + $($($AutoTraits)+)?,
+        Item : HKT,
+        I : LendingIteratorDyn<Item = CanonicalHKT<Item>>,
+        I : $($AutoTraits)* ,
     {
-        fn dyn_ref_auto<'r, 'T> (
-            self: &'r mut T,
-        // ) -> &'r mut (dyn 'T + LendingIteratorDyn<Item = HKTItem<Self>> + $($($AutoTraits)+)?)
-        ) -> &'r mut dynLendingIterator<'T, HKTItem<Self>, ($(dyn $($AutoTraits)+)?)>
-        where
-            T : 'T,
+        fn coerce (self: I)
+          -> ::alloc::boxed::Box<dyn
+                'I + LendingIteratorDyn<Item = CanonicalHKT<Item>> +
+                $($AutoTraits)*
+            >
         {
-            self
-        }
-    }
-
-    impl<Item : HKT>
-        AsRefDynLendingIterator<Item, ($(dyn $($AutoTraits)+)?)>
-    for
-        (dyn '_ + LendingIteratorDyn<Item = Item> + $($($AutoTraits)+)?)
-    {
-        fn dyn_ref_auto<'r, 'usability> (
-            self: &'r mut Self,
-        // ) -> &'r mut (dyn 'usability + LendingIteratorDyn<Item = Item> + $($($AutoTraits)+)?)
-        ) -> &'r mut dynLendingIterator<'usability, Item, ($(dyn $($AutoTraits)+)?)>
-        where
-            Self : 'usability,
-        {
-            self
+            ::alloc::boxed::Box::new(self)
         }
     }
 )}

@@ -1,5 +1,30 @@
 # `::lending-iterator`
 
+Fully generic `LendingIterator`s in stable Rust.
+
+  - this pattern used to be called `StreamingIterator`, but since [`Stream`](
+    https://docs.rs/futures/0.3.21/futures/stream/trait.Stream.html)s entered
+    the picture (as the `async/.await` version of `Iterator`s, that is,
+    `AsyncIterator`s), it has been deemed more suitable to go for the _lending_
+    naming convention.
+
+      - (this could be even more relevant since you can have a `LendingIterator`
+        lending `impl Future`s, which would effectively make it another flavor
+        of `AsyncIterator`, but not quite the `Stream` variant).
+
+  - For context, this crate is a generalization of other crates such as:
+      - [`::streaming_iterator`](https://docs.rs/streaming-iterator/0.1.6/streaming_iterator)
+      - [`::fallible_streaming_iterator`](https://docs.rs/fallible-streaming-iterator/0.1.9/fallible_streaming_iterator)
+
+    which hard-code their lending `Item` type to `&_` and `Result<&_, _>`
+    respectively.
+
+    This crate does not hardcode such dependent types, and thus encompasses
+    _both_ of those traits, and infinitely more!
+
+  - Mainly, it allows lending `&mut _` `Item`s, which means it can handle the
+    infamously challenging [`windows_mut()`] pattern!
+
 [![Repository](https://img.shields.io/badge/repository-GitHub-brightgreen.svg)](
 https://github.com/danielhenrymantilla/lending-iterator.rs)
 [![Latest version](https://img.shields.io/crates/v/lending-iterator.svg)](
@@ -16,3 +41,121 @@ https://github.com/danielhenrymantilla/lending-iterator.rs/blob/master/LICENSE-Z
 https://github.com/danielhenrymantilla/lending-iterator.rs/actions)
 
 <!-- Templated by `cargo-generate` using https://github.com/danielhenrymantilla/proc-macro-template -->
+
+## Examples
+
+<details open><summary>Click to hide</summary>
+
+### `windows_mut()`!
+
+```rust
+use ::lending_iterator::prelude::*;
+
+let mut array = [0; 15];
+array[1] = 1;
+// Cumulative sums are trivial with a `mut` sliding window,
+// so let's showcase that by generating a Fibonacci sequence.
+let mut iter = windows_mut::<_, 3>(&mut array);
+while let Some(&mut [a, b, ref mut next]) = iter.next() {
+    *next = a + b;
+}
+assert_eq!(
+    array,
+    [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377],
+);
+```
+
+### Rolling your own version of it using the handy `from_fn` constructor
+
+  - (Or even the `FromFn` flavor of it to enjoy "named arguments")
+
+```rust
+use ::lending_iterator::prelude::*;
+
+let mut array = [0; 15];
+array[1] = 1;
+// Let's hand-roll our iterator lending `&mut` sliding windows:
+let mut iter = {
+    let mut start = 0;
+    lending_iterator::FromFn::<HKT!(&mut [u16; 3]), _, _> {
+        state: &mut array[..],
+        next: move |slice| {
+            let to_yield =
+                slice
+                    .get_mut(start..)?
+                    .get_mut(..3)?
+                    .try_into() // `&mut [u8] -> &mut [u8; 3]`
+                    .unwrap()
+            ;
+            start += 1;
+            Some(to_yield)
+        },
+        _phantom: <_>::default(),
+    }
+};
+while let Some(&mut [a, b, ref mut next]) = iter.next() {
+    *next = a + b;
+}
+assert_eq!(
+    array,
+    [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377],
+);
+```
+
+  - where that <code>[HKT!]\(\&mut \[u16; 3\]\)</code> is a [higher-kinded] type
+    parameter that **has to be turbofished** to let the generic context
+    properly figure out the return type of the `next` closure.
+
+    Indeed, if we were to let type inference, alone, figure it out, it wouldn't
+    be able to know which lifetimes would be fixed/tied to call-site captures,
+    and which would be tied to the "lending-ness" of the iterator (higher-order
+    return type).
+    See [`::higher-order-closure`](https://docs.rs/higher-order-closure) for
+    more info about this.
+
+### `LendingIterator` adapters
+
+```rust
+use ::lending_iterator::prelude::*;
+
+let mut array = [0; 15];
+array[1] = 1;
+// Let's hand-roll our iterator lending `&mut` sliding windows:
+let mut iter = {
+    ::lending_iterator::repeat((0, &mut array))
+        .and_then_to_mut(|[], (start, array)| -> Option<&mut [u16]> {
+            let to_yield =
+                array
+                    .get_mut(*start..)?
+                    .get_mut(..3)?
+            ;
+            *start += 1;
+            Some(to_yield)
+        })
+        .map_to_mut::<[u16; 3], _>(|[], slice| slice.try_into().unwrap())
+};
+while let Some(&mut [a, b, ref mut next]) = iter.next() {
+    *next = a + b;
+}
+// drop(iter);
+assert_eq!(
+    array,
+    [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377],
+);
+```
+
+  - Notice how any adapters that return a lending / dependent type (such as
+    `&mut` for `{and_then, map}_to_mut()`) are required to take an extra `[]`
+    "dummy" parameter for the closure input. This is due to a technical
+    limitation of the language, and having to add `[], ` was the least
+    cumbersome way that I could find to work around it 😔
+
+___
+
+</details>
+
+<!-- Fallback-to-hard-coded-paths links (otherwise shadowed in the `lib.rs`) -->
+
+[`windows_mut()`]: https://docs.rs/lending-iterator/0.1.*/fn.windows_mut.html
+[HKT!]: https://docs.rs/lending-iterator/0.1.*/lending_iterator/higher_kinded_types/macro.HKT.html
+[higher-kinded]: https://docs.rs/lending-iterator/0.1.*/lending_iterator/higher_kinded_types

@@ -4,6 +4,10 @@
 ///
 /// This is a property `unsafe` code can rely on: it can thus use transmute to
 /// construct it.
+///
+/// It is also a property that will be upheld within future versions (should
+/// this property ever be broken in the future, the change would then be a
+/// semver-breaking one, and the type would be renamed to avoid footguns).
 pub
 struct IntoIter<I : ?Sized + LendingIterator>(
     pub I,

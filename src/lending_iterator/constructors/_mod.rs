@@ -1,13 +1,10 @@
 use super::*;
 
 match_! {(
-    and_then,
-    filter,
-    fuse,
-    into_iter,
-    map,
-    skip,
-    take,
+    from_fn,
+    from_iter,
+    repeat,
+    windows_mut,
 ) {(
     $(
         $module:ident
