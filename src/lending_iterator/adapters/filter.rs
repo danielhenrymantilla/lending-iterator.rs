@@ -1,3 +1,5 @@
+/// The <code>impl [LendingIterator]</code> returned by [`.filter()`][
+/// LendingIterator::filter()].
 pub
 struct Filter<I, F>
 where

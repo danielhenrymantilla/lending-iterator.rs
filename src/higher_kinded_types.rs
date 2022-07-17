@@ -12,7 +12,7 @@
 ///
 /// This can be useful when needing to nudge type inference so as to imbue
 /// closures with the appropriate higher-order signature that a fully generic
-/// signature, such as [`lending_iterator::from_fn`][crate::from_fn]'s.
+/// signature, such as [`lending_iterator::from_fn`][crate::from_fn()]'s.
 ///
 /// See [the module documentation for more info][self].
 pub

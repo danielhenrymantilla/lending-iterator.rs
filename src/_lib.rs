@@ -1,5 +1,5 @@
 /*!
-[`windows_mut()`]: windows_mut
+[`windows_mut()`]: windows_mut()
 [HKT!]: higher_kinded_types::HKT!
 [higher-kinded]: higher_kinded_types
 */
@@ -13,6 +13,9 @@
 #![forbid(unsafe_code)]
 #![allow(nonstandard_style, uncommon_codepoints)]
 
+#[macro_use]
+mod utils;
+
 #[doc(inline)]
 pub use self::{
     lending_iterator::{
@@ -21,14 +24,34 @@ pub use self::{
             FromFn,
             from_fn,
             from_iter,
-            repeat,
-            windows_mut,
+            repeat_mut,
+            windows_mut_::windows_mut,
         },
     },
 };
 
+/// <code>[#\[::nougat::gat\]]</code>
+///
+/// [#\[::nougat::gat\]]: https://docs.rs/nougat/*/nougat/attr.gat.html
+///
+/// Using this attribute is needed when implementing `LendingIterator` for your
+/// own types, as well as **for reëxporting the `LendingIterator` trait**,
+/// itself, in a way that remains compatible with further downstream
+/// implementations down the line: `#[gat(Item)] use …::LendingIterator;`.
+///
+///   - See the documentation of <code>[#\[::nougat::gat\]]</code> for more info
+///     about this.
+pub use ::nou::gat;
+
+#[doc(inline)]
+#[apply(cfg_futures)]
+pub use self::lending_iterator::constructors::from_stream;
+
 #[cfg(feature = "alloc")]
 extern crate alloc;
+
+#[macro_use]
+extern crate extension_traits;
 
 #[macro_use]
 extern crate macro_rules_attribute;
@@ -37,9 +60,6 @@ extern crate nougat as nou;
 
 #[macro_use]
 extern crate polonius_the_crab;
-
-#[macro_use]
-mod utils;
 
 pub
 mod higher_kinded_types;

@@ -55,7 +55,7 @@ let mut array = [0; 15];
 array[1] = 1;
 // Cumulative sums are trivial with a `mut` sliding window,
 // so let's showcase that by generating a Fibonacci sequence.
-let mut iter = windows_mut::<_, 3>(&mut array);
+let mut iter = array.windows_mut::<3>(); // windows_mut::<_, 3>(&mut array);
 while let Some(&mut [a, b, ref mut next]) = iter.next() {
     *next = a + b;
 }
@@ -122,8 +122,8 @@ let mut array = [0; 15];
 array[1] = 1;
 // Let's hand-roll our iterator lending `&mut` sliding windows:
 let mut iter = {
-    ::lending_iterator::repeat((0, &mut array))
-        .and_then_to_mut(|[], (start, array)| -> Option<&mut [u16]> {
+    ::lending_iterator::repeat_mut((0, &mut array))
+        .filter_map_to_mut(|[], (start, array)| -> Option<&mut [u16]> {
             let to_yield =
                 array
                     .get_mut(*start..)?

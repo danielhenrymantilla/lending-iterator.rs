@@ -1,3 +1,6 @@
+/// The <code>impl [Iterator]</code> (not a [`LendingIterator`]!) returned by
+/// [`.into_iter()`][LendingIterator::into_iter()].
+///
 /// Note: since this wrapper only exists to avoid coherence issues,
 /// it is **guaranteed** to be a `#[repr(transparent)]` wrapper around its
 /// inner `I`.

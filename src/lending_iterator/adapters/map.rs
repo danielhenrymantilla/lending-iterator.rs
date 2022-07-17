@@ -1,3 +1,5 @@
+/// The <code>impl [LendingIterator]</code> returned by
+/// [`.map()`][LendingIterator::map()].
 pub
 struct Map<I, F, NewItemType>
 where
@@ -5,7 +7,7 @@ where
     NewItemType : HKT,
     for<'any>
         F : FnMut(
-            [&'any (); 0],
+            [&'any I; 0],
             Item<'any, I>,
         ) -> A!(NewItemType<'any>)
     ,
@@ -28,7 +30,7 @@ where
     NewItemType : HKT,
     for<'any>
         F : FnMut(
-            [&'any (); 0],
+            [&'any I; 0],
             Item<'any, I>,
         ) -> A!(NewItemType<'any>)
     ,
@@ -48,6 +50,8 @@ where
     }
 }
 
+/// The <code>impl [LendingIterator]</code> returned by
+/// [`.map_into_iter()`][LendingIterator::map_into_iter()].
 pub
 struct MapIntoIter<I, F>
 (

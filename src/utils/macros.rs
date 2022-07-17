@@ -12,11 +12,8 @@ macro_rules! cfg_match {
         $cfg:meta => $expansion:tt $(,
         $($($rest:tt)+)? )?
     ) => (
-        #[cfg($cfg)]
-        cfg_match! { _ => $expansion } $($(
-
-        #[cfg(not($cfg))]
-        cfg_match! { $($rest)+ } )?)?
+        #[cfg($cfg)] cfg_match! { _ => $expansion } $($(
+        #[cfg(not($cfg))] cfg_match! { $($rest)+ } )?)?
     );
 }
 
@@ -26,7 +23,7 @@ attribute_alias! {
             ::macro_vis::macro_vis(pub),
         )]
         #[cfg_attr(not(feature = "better-docs"),
-            macro_export
+            macro_export,
         )]
     ;
 }
@@ -36,6 +33,15 @@ attribute_alias! {
         #[cfg(feature = "alloc")]
         #[cfg_attr(feature = "better-docs",
             doc(cfg(feature = "alloc")),
+        )]
+    ;
+}
+
+attribute_alias! {
+    #[apply(cfg_futures)] =
+        #[cfg(feature = "futures")]
+        #[cfg_attr(feature = "better-docs",
+            doc(cfg(feature = "futures")),
         )]
     ;
 }

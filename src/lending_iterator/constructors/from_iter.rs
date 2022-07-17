@@ -1,8 +1,22 @@
+/// "Lifts" / converts an \[`Into`\][`Iterator`] into an
+/// <code>impl [LendingIterator]</code>
+///
+///   - This is a free function version of the [`.into_lending_iter()`] method
+///     provided by the eponymous [extension trait](https://docs.rs/extension_traits).
+///
+///     That is, feel free to check out that extension method, since in practice
+///     it's even more ergonomic to use.
+///
+/// [`.into_lending_iter()`]: trait@super::into_lending_iter#impl-into_lending_iter<I%2C%20IntoIter>
+///
+///   - See the [`.into_iter()`] method on [`LendingIterator`] for the reverse operation.
+///
+/// [`.into_iter()`]: LendingIterator::into_iter
 pub
 fn from_iter<I : IntoIterator> (it: I)
   -> FromIter<I::IntoIter>
 {
-    it.into_iter().into_lending_iter()
+    constructors::FromIter(it.into_iter())
 }
 
 /// Note: since this wrapper only exists to avoid coherence issues,

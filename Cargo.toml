@@ -28,6 +28,7 @@ default = [
 alloc = []
 
 better-docs = [ # allowed to break MSRV
+    "futures",
     "macro-vis",
 ]
 
@@ -36,11 +37,14 @@ ui-tests = [
 ]
 
 [dependencies]
+extension-traits.version = "1.0.1"
 macro_rules_attribute.version = "0.1.2"
-nougat.version = "0.2.0"
-never-say-never = "6.6.666"
+never-say-never.version = "6.6.666"
+nougat.version = "0.2.1"
 polonius-the-crab.version = "0.2.1"
 
+futures.optional = true
+futures.version = "0.3.21"
 macro-vis.optional = true
 macro-vis.version = "0.1.1"
 

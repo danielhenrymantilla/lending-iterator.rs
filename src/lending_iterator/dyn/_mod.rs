@@ -70,13 +70,26 @@ use super::*;
 ///
 pub
 trait LendingIteratorDyn {
+    /// Another approach to a `GAT` in stable Rust: use a classic associated
+    /// type, but with a [`HKT`][trait@HKT] bound on it, so that it can still
+    /// be [fed][`crate::higher_kinded_types::Feed`] a lifetime parameter.
     type Item : ?Sized + HKT;
 
+    /// A `dyn`-safe version of [`LendingIterator::next()`], using
+    /// [`Self::Item]`.
+    ///
+    /// Given that <code>[LendingIteratorDyn] : [LendingIterator]</code>, you
+    /// should not need to call this function directly: calling `.next()` ought
+    /// to work just as well.
+    ///
+    ///   - That being said, if defining a `LendingIteratorDyn` subtrait, you
+    ///     may then need to directly call into it.
     fn dyn_next (
         self: &'_ mut Self,
     ) -> Option<A!(Self::Item<'_>)>
     ;
 
+    #[cfg(any())]
     /// Like [`LendingIterator::by_ref`], but `dyn`-friendly.
     ///
     /// Can be convenient to allow usage of `where Self : Sized` methods when
@@ -135,6 +148,7 @@ for
         self.next()
     }
 
+    #[cfg(any())]
     fn by_ref_dyn<'usability> (
         self: &'_ mut Self,
     ) -> &'_ mut (dyn 'usability + LendingIteratorDyn<Item = Self::Item>)
