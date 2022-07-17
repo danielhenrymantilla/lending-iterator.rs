@@ -2,19 +2,26 @@
 pub use {
     crate::{
         lending_iterator::{
-            IntoLendingIterator,
+            constructors::{
+                into_lending_iter as _,
+                windows_mut as _,
+            },
             Item,
-            LendingIterator,
+            LendingIteratorDyn,
         },
+        gat,
         higher_kinded_types::{
             Apply,
             CanonicalHKT,
             Feed,
             HKT,
             HKTItem,
+            HKTRef,
+            HKTRefMut,
         },
+        windows_mut,
     },
 };
 
-#[doc(hidden)]
-pub use crate::lending_iterator::LendingIteratorඞItem;
+#[nou::gat(Item)]
+pub use crate::lending_iterator::LendingIterator;

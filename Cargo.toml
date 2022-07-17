@@ -1,7 +1,5 @@
 # Templated by `cargo-generate` using https://github.com/danielhenrymantilla/proc-macro-template
-
 [lib]
-name = "lending_iterator"
 path = "src/_lib.rs"
 
 [package]
@@ -9,7 +7,7 @@ name = "lending-iterator"
 authors = [
     "Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>",
 ]
-version = "0.1.0-rc1"  # Keep in sync
+version = "0.1.0"  # Keep in sync
 edition = "2021"
 
 license = "Zlib OR MIT OR Apache-2.0"
@@ -19,8 +17,8 @@ readme = "README.md"
 
 rust-version = "1.57.0"
 
-# description = "…"
-# keywords = []
+description = "Fully general lending iterators in stable rust: windows_mut!"
+keywords = ["rust-patterns"]
 
 [features]
 default = [
@@ -30,22 +28,29 @@ default = [
 alloc = []
 
 better-docs = [ # allowed to break MSRV
+    "futures",
     "macro-vis",
 ]
-ui-tests = ["better-docs"]
+
+ui-tests = [
+    "better-docs",
+]
 
 [dependencies]
+extension-traits.version = "1.0.1"
 macro_rules_attribute.version = "0.1.2"
-nougat.version = "0.2.0-rc2"
-never-say-never = "6.6.666"
+never-say-never.version = "6.6.666"
+nougat.version = "0.2.1"
 polonius-the-crab.version = "0.2.1"
 
+futures.optional = true
+futures.version = "0.3.21"
 macro-vis.optional = true
 macro-vis.version = "0.1.1"
 
 [dependencies.lending-iterator-proc_macros]
 path = "src/proc_macros"
-version = "0.1.0-rc1"  # Keep in sync
+version = "0.1.0"  # Keep in sync
 
 [dev-dependencies]
 

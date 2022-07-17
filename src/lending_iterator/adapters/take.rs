@@ -1,3 +1,5 @@
+/// The <code>impl [LendingIterator]</code> returned by
+/// [`.take()`][LendingIterator::take()].
 pub
 struct Take<I : LendingIterator> {
     pub(in crate)

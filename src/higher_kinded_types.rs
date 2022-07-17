@@ -12,7 +12,7 @@
 ///
 /// This can be useful when needing to nudge type inference so as to imbue
 /// closures with the appropriate higher-order signature that a fully generic
-/// signature, such as [`crate::lending_iterator::from_fn`]'s.
+/// signature, such as [`lending_iterator::from_fn`][crate::from_fn()]'s.
 ///
 /// See [the module documentation for more info][self].
 pub
@@ -90,6 +90,19 @@ for
 /// _Ad-hoc_ <code>impl [HKT][trait@HKT]</code> type.
 ///
 /// See [the module documentation for more info][self] for more info.
+///
+/// ### Examples
+///
+/**  - ```rust
+    use ::lending_iterator::higher_kinded_types::HKT;
+
+    // All these three define the same `HKT` type:
+    type StrRef = HKT!(<'any> => &'any str);
+    type StrRefElided = HKT!(&str);
+    type StrRefElided2 = HKT!(&'_ str);
+
+    type LifetimeParamsWorkToo = HKT!(::std::borrow::Cow<'_, str>);
+    ``` */
 #[apply(public_macro!)]
 macro_rules! HKT {
     (
@@ -101,6 +114,10 @@ macro_rules! HKT {
     );
 
     (
+        $(@docs.rs
+            "Lifetime elision case: use `'_` or `&[mut] …` to replace the \
+            so-elided lifetimes with a HKT-higher-order one."
+        )?
         $T:ty $(,)?
     ) => (
         $crate::higher_kinded_types::HKT!(
@@ -236,7 +253,7 @@ macro_rules! ඞ_munch_Apply {
     );
 }
 
-/// \[eta-expansion\] Projects an arbitrary <code>impl [HKT]</code> into the
+/// \[eta-expansion\] Projects an arbitrary <code>impl [HKT]</code> to its
 /// [`HKT!`] "canonical" (η-expanded) form.
 ///
 ///   - To illustrate, let's consider a non-canonical <code>impl [HKT]</code>
@@ -254,7 +271,7 @@ macro_rules! ඞ_munch_Apply {
 ///     Then, we have <code>StrRef : [HKT]</code> (and for any `'lt`,
 ///     <code>[Apply!]\(StrRef\<\'lt\>\) = \&\'lt str</code>).
 ///
-///     And yet, <code>StrRef ≠ [HKT!]\(\&str\)</code>, since the latter is
+///     And yet, **<code>StrRef ≠ [HKT!]\(\&str\)</code>**, since the latter is
 ///     actually something along the lines of
 ///     `dyn for<'lt> WithLifetime<'lt, T = &'lt str>`, which is clearly not,
 ///     **nominally**, our `StrRef` type.
@@ -262,8 +279,11 @@ macro_rules! ඞ_munch_Apply {
 ///     This [`CanonicalHKT`] operation then represents an operation which
 ///     "extracts" the inherent `HKT` semantics of the given `impl HKT` type
 ///     (_e.g._, `<'n> => &'n str` for both `StrRef` and `HKT!(&str)`), to then
-///     wrap them into / apply them to / project them to a [HKT!] type (_e.g._,
-///     `HKT!(&str)`).
+///     wrap them into / apply them to / project them to a [`HKT!`] type
+///     (_e.g._, `HKT!(&str)`).
+///
+///     So, while <code>StrRef ≠ [HKT!]\(\&str\)</code>, we do have
+///     <code>[CanonicalHKT]\<StrRef\> = [HKT!]\(\&str\)</code> 👌
 ///
 /// [HKT]: trait@HKT
 ///
@@ -296,10 +316,7 @@ macro_rules! ඞ_munch_Apply {
 /// # Example
 ///
 /**  - ```rust
-    use ::lending_iterator::{
-        higher_kinded_types::*,
-        lending_iterator::*,
-    };
+    use ::lending_iterator::prelude::*;
 
     fn unify<'usability, I, J, Item> (i: I, j: J)
       -> [Box<dyn 'usability + LendingIteratorDyn<Item = CanonicalHKT<Item>>>; 2]
@@ -347,19 +364,45 @@ macro_rules! ඞ_munch_Apply {
 /// # #[cfg(any())] macro_rules! ignore {
 /// lending_iterator::HKT<(dyn for<'ඞ> WithLifetime<'ඞ, /* for<'ඞ> */ T = <Item as WithLifetime<'ඞ>>::T> + 'static)>
 /// // i.e.
+/// lending_iterator::HKT<(dyn for<'n> WithLifetime<'n, T = Apply!(Item<'n>)>)>
+/// // i.e.
 /// HKT!(<'n> => Apply!(Item<'n>))
+/// // i.e.
+/// CanonicalHKT<Item>
 /// # }
 /// ```
 ///
 /// Contrary to the generic `Item` which may be of any shape, these types are
 /// [HKT!]-constructed <code>impl [HKT]</code> types, hence the type mismatch.
 ///
-/// But if we lift `Item` so that it be, itself, an [HKT!]-constructed
-/// <code>impl [HKT]</code> type, that is, we use
+/// But if we lift `Item` so that it be, itself, an [`HKT!`]-constructed
+/// <code>impl [HKT]</code> type, that is, if we use
 /// <code>[CanonicalHKT]\<Item\></code> rather than `Item`, we no longer are in
 /// that situation and thus avoid the issue.
 #[allow(type_alias_bounds)]
 pub type CanonicalHKT<T : ?Sized + HKT> = HKT!(Feed<'_, T>);
+
+/// Pervasive [`HKT!`] choice: <code>[HKT!]\<\&T\></code>
+///
+/// ```rust
+/// # #[cfg(any())] macro_rules! ignore {
+/// type HKTRef<T : ?Sized> = HKT!(&T);
+/// # }
+/// ```
+#[allow(type_alias_bounds)]
+pub
+type HKTRef<T : ?Sized> = HKT!(&T);
+
+/// Pervasive [`HKT!`] choice: <code>[HKT!]\<\&mut T\></code>
+///
+/// ```rust
+/// # #[cfg(any())] macro_rules! ignore {
+/// type HKTRefMut<T : ?Sized> = HKT!(&mut T);
+/// # }
+/// ```
+#[allow(type_alias_bounds)]
+pub
+type HKTRefMut<T : ?Sized> = HKT!(&mut T);
 
 #[doc(inline)]
 pub

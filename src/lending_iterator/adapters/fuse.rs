@@ -1,3 +1,5 @@
+/// The <code>impl [LendingIterator]</code> returned by [`.fuse()`][
+/// LendingIterator::fuse()].
 pub
 struct Fuse<I : LendingIterator>(
     pub(in crate) Option<I>,

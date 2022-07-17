@@ -1,5 +1,7 @@
 use ::core::num::NonZeroUsize;
 
+/// The <code>impl [LendingIterator]</code> returned by
+/// [`.skip()`][LendingIterator::skip()].
 pub
 struct Skip<I : LendingIterator> {
     pub(in crate)

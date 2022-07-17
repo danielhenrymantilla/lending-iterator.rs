@@ -1,7 +1,13 @@
 #![allow(unused)]
-use super::*;
 use {
-    CanonicalHKT as Eta,
+    ::alloc::{
+        boxed::Box,
+    },
+    crate::{
+        self as lending_iterator,
+        prelude::*,
+    },
+    self::CanonicalHKT as Eta,
 };
 
 // Check `dyn`-unification when dealing with a non-generic way of lending.
@@ -9,7 +15,7 @@ fn check<'r, T> (slice: &'r mut [T])
   -> Box<dyn 'r + LendingIteratorDyn<Item = HKT!(&mut [T; 1])>>
 {
     if true {
-        from_fn::<HKT!(&mut [T; 1]), _, _>(
+        lending_iterator::from_fn::<HKT!(&mut [T; 1]), _, _>(
             slice.iter_mut(),
             |iter| iter.next().map(::core::array::from_mut),
         )
@@ -36,19 +42,15 @@ where
     > =
         i.dyn_boxed_auto()
     ;
-    i   .by_ref_dyn()
-        .fold((), |(), _| ());
+    i.fold((), |(), _| ());
 }
 
 /// ### Example: `dyn` coercion of a _fully generic_ `LendingIterator`:
 ///
 /// WITH MISSING `Sync`!
 ///
-/**  - ```rust
-    use ::lending_iterator::{
-        higher_kinded_types::*,
-        lending_iterator::*,
-    };
+/**  - ```rust ,compile_fail
+    use ::lending_iterator::prelude::*;
 
     fn coercions<'T, Item, T> (it: T)
     where

@@ -23,71 +23,23 @@ pub use self::{
     r#dyn::LendingIteratorDyn,
 };
 
+/// [`LendingIterator`] adapters.
 #[path = "adapters/_mod.rs"]
 pub
 mod adapters;
 
+/// Functions, extension traits and types allowing direct construction of
+/// [`LendingIterator`]s (no need for custom types or implementations!).
+#[path = "constructors/_mod.rs"]
+pub
+mod constructors;
+
 use r#dyn::*;
-#[path = "dyn.rs"]
+#[path = "dyn/_mod.rs"]
 pub(in crate)
 mod r#dyn;
 
 mod impls;
-
-pub
-mod windows_mut;
-
-pub
-fn from_iter<I : IntoIterator> (it: I)
-  -> FromIter<I::IntoIter>
-{
-    it.into_iter().into_lending_iter()
-}
-
-#[allow(type_alias_bounds)]
-/// `generic_associated_types`-agnostic shorthand for
-/// <code>\<I as [LendingIterator]\>::Item\<\'lt\></code>
-pub
-type Item<'lt, I : LendingIterator> =
-    Gat!(<I as LendingIterator>::Item<'lt>)
-;
-
-pub
-fn from_fn<Item, State, Next> (
-    state: State,
-    next: Next,
-) -> FromFn<Item, State, Next>
-where
-    Item : HKT,
-    Next : FnMut(&'_ mut State) -> Option< A!(Item<'_>) >,
-{
-    FromFn { state, _phantom: <_>::default(), next }
-}
-
-pub
-trait IntoLendingIterator : IntoIterator + Sized {
-    fn into_lending_iter (
-        self: Self,
-    ) -> FromIter<Self::IntoIter>
-    {
-        impl<T : IntoIterator> IntoLendingIterator for T {}
-        FromIter(self.into_iter())
-    }
-}
-
-// dyn::DynCoercions<
-//     HKT!(&mut [T; WINDOW_SIZE]),
-//     // vs.
-//     HKTItem<
-//         WindowsMut<&'lt mut [T], WINDOW_SIZE>
-//     >
-//     // i.e.
-//     HKT!(Item<'_, WindowsMut<&'lt mut [T], WINDOW_SIZE>>)
-//     // i.e.
-//     HKT!()
-// >
-// for
-// WindowsMut<&'lt mut [T], WINDOW_SIZE>
 
 macro_rules! with_cfg_better_docs {( $($rules:tt)* ) => (
     macro_rules! __emit__ { $($rules)* }
@@ -120,17 +72,162 @@ $($($if_better_docs)?
     /// [`LendingIterator`]'s adapters.
     #[doc(notable_trait)]
     pub trait LendingIteratorඞItem<'next, Bounds = &'next Self> {
+        /// The "output" of this whole hand-rolled GAT:
+        /// think of `LendingIteratorඞItem<'lt>::T` as of `LendingIterator::Item<'lt>`.
+        ///
+        /// ⚠️ **NEVER NAME THIS TRAIT OR ASSOC TYPE DIRECTLY** ⚠️ yadda yadda.
         type T;
     }
 )?
 
+#[allow(type_alias_bounds)]
+/// `generic_associated_types`-agnostic shorthand for
+/// <code>\<I as [LendingIterator]\>::Item\<\'lt\></code>
+pub
+type Item<'lt, I : LendingIterator> =
+    Gat!(<I as LendingIterator>::Item<'lt>)
+;
+
+/// The meat of the crate. Trait similar to [`Iterator`] but **for the return
+/// type of the `fn next(&'_ mut self)` method being allowed to depend on that
+/// `'_`**.
+///
+/// <details open><summary>Click to hide</summary>
+///
+///   - That type is called the `Item<'_>` type, and is a
+///     [`generic_associated_type`](#a-generic-associated-type).
+///
+///   - That difference is crucial both in terms of signature complexity
+///     (as this crate's API ought to prove 😅) and borrowing semantics.
+///
+/// Mainly, when yielded, such `Item<'_>` is still `&mut` borrowing `*self`, so
+/// **it won't be possible to further advance the iterator** (or anything else,
+/// for that matter), **until the current item is no longer used.**
+///
+/// That is: **the `Item<'_>`s yielded by a [`LendingIterator`] cannot
+/// coëxist!**
+///
+///   - this will thus impose serious usability limitations on it (_e.g_, no
+///     `.collect()`ing whatsoever, since collecting items, by definition,
+///     expects them to coëxist (within the collection)).
+///
+///       - For instance, there won't be a `for item in iter {` sugar on these
+///         things, since that `for` sugar currently only blesses the stdlib
+///         [`Iterator`] trait.
+///
+///         That being said, `while let Some(item) = iter.next() {` works just
+///         as well, to be honest.
+///
+///   - but the dual / other side of that API restriction is that it is way
+///     simpler / less constraining, _for implementors_, to implement this
+///     trait.
+///
+///     The canonical example illustrating this difference is [`windows_mut()`][
+///     constructors::windows_mut()], which is both an intuitive "iterator" we
+///     can think of, and yet something for which it is _impossible_ to
+///     implement [`Iterator`].
+///
+/// ## A Generic Associated Type
+///
+/// The core definition of this trait is thus:
+///
+/**  - ```rust
+    #![feature(generic_associated_types)]
+
+    trait LendingIterator {
+        type Item<'next>
+        where
+            Self : 'next,
+        ;
+
+        fn next<'next> (
+            self: &'next mut Self, // <- `Self : 'next` indeed!
+        ) -> Option<Self::Item<'next>>
+        ;
+    }
+    ``` */
+///
+/// As you can see, it involves that more complex `type Item` definition, which
+/// is called a _generic associated type_ (GAT for short), and, it _currently_
+/// requires the `nightly`-only `feature(generic_associated_types)`.
+///
+/// –Then how come this crate can work on stable?— you may ask.
+///
+/// The answer is that [(lifetime)-GATs can actually be emulated in stable Rust
+/// through some extra slightly convoluted hoops][`::nougat`].
+///
+/// [`::nougat`]: https://docs.rs/nougat
+///
+/// That's why this crate uses those techniques (and the crate featuring them,
+/// [`::nougat`]), to achieve Stable Rust support:
+///
+/**  - ```rust
+    #[::nougat::gat] // 👈 Add this and now It Just Works™ on stable.
+    trait LendingIterator {
+        type Item<'next>
+        where
+            Self : 'next,
+        ;
+
+        fn next<'next> (
+            self: &'next mut Self,
+        ) -> Option<Self::Item<'next>>
+        ;
+    }
+    ``` */
+///
+/// It does come with a few caveats, though: **the `LendingIterator::Item` item
+/// is no longer really nameable**, at least not _directly_.
+///
+///   - The current implementation of [`::nougat]` uses a helper _higher-order_
+///     super-trait, called
+///     <code>for\<\'any\> [LendingIteratorඞItem]\<\'any\></code>, which has,
+///     itself, a non-generic associated type, `::T`. That way,
+///     `LendingIteratorඞItem<'next>::T` plays the role of
+///     `LendingIterator::Item<'next>`.
+///
+///     **BUT THIS MAY change within semver-compatible changes of `nougat`**
+///
+///     Thence why that path should never be used, directly, by downstream code.
+///
+///     The only reason I am even talking about it and not having it
+///     `#[doc(hidden)]` is that exposing it makes understanding the signatures
+///     of the adapters multiple order of magnitude easier.
+///
+/// Thence the following "rules":
+///
+///   - Use <code>[Item]\<\'_, I\></code> instead of `I::Item<'_>`.
+///
+///       - you could technically import the `Gat!` macro from the `::nougat`
+///         crate, and then use `Gat!(I::Item<'_>)` (this is how this crate
+///         manages to define [`Item`], for instance). But it seems less
+///         convenient than a type alias.
+///
+///       - within a `#[gat]`-annotated `trait` or `impl`, most of the
+///         `…::Item<'_>` mentions will automagically be amended by the macro
+///         (which is why the previous snippet works, despite its usage
+///         of `Self::Item<'next>`).
+///
+///   - If implementing the trait yourself, you need to apply
+///     <code>[#\[gat\]][crate::gat]</code> to the `impl` yourself.
+///
+///   - If reëxporting the trait yourself, you need to also apply
+///     <code>[#\[gat(Item)\]][crate::gat]</code> to the `use` statement as
+///     well, so people can implement the trait through the new path.
+///
+///  - [`LendingIterator`] is not really `dyn`-friendly (although IIUC, with
+///     `feature(generic_associated_types)` it wouldn't have been either).
+///
+///     But you can use <code>dyn [LendingIteratorDyn]\<Item = …\> + …</code>
+///     instead, which has been designed with `dyn`-friendlyness in mind 🙂.
+///
+/// </details>
 $($($if_not_better_docs)?
     #[gat]
 )?
 pub
 trait LendingIterator
 where
-    // Self : DynCoercions<HKTItem<Self>>,
     $($($if_better_docs)?
         Self : for<'next> LendingIteratorඞItem<'next>,
     )?
@@ -142,11 +239,15 @@ where
         ;
     )?
 
+    /// Query the `next()` `Item` of this `Self` iterator.
+    ///
+    /// [`LendingIterator`] counterpart of [`Iterator::next()`].
     fn next (
         self: &'_ mut Self,
     ) -> Option<Item<'_, Self>>
     ;
 
+    /// [`LendingIterator`] counterpart of [`Iterator::filter()`].
     fn filter<F> (
         self: Self,
         should_yield: F,
@@ -158,6 +259,7 @@ where
         Filter { iter: self, should_yield }
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::for_each()`].
     fn for_each<> (
         self: Self,
         mut f: impl FnMut(Item<'_, Self>),
@@ -168,6 +270,7 @@ where
         self.fold((), |(), item| f(item))
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::fold()`].
     fn fold<Acc> (
         mut self: Self,
         acc: Acc,
@@ -180,6 +283,7 @@ where
             .unwrap_or_else(|unreachable: ǃ| unreachable)
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::try_for_each()`].
     fn try_for_each<Err> (
         self: &'_ mut Self,
         mut f: impl FnMut(Item<'_, Self>) -> Result<(), Err>,
@@ -188,6 +292,7 @@ where
         self.try_fold((), |(), item| f(item))
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::try_fold()`].
     fn try_fold<Acc, Err> (
         self: &'_ mut Self,
         mut acc: Acc,
@@ -200,6 +305,7 @@ where
         Ok(acc)
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::all()`].
     fn all<> (
         self: &'_ mut Self,
         mut predicate: impl FnMut(Item<'_, Self>) -> bool,
@@ -217,6 +323,7 @@ where
             .is_ok()
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::any()`].
     fn any<> (
         self: &'_ mut Self,
         mut predicate: impl FnMut(Item<'_, Self>) -> bool,
@@ -228,6 +335,7 @@ where
             .not()
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::by_ref()`].
     fn by_ref<> (self: &'_ mut Self)
       -> &'_ mut Self
     where
@@ -236,6 +344,7 @@ where
         self
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::count()`].
     fn count<> (self: Self)
       -> usize
     where
@@ -244,6 +353,7 @@ where
         self.fold(0_usize, |acc, _| acc + 1)
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::find()`].
     fn find<'find> (
         self: &'find mut Self,
         mut predicate: impl 'find + FnMut(&Item<'_, Self>) -> bool,
@@ -262,6 +372,7 @@ where
         })
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::fuse()`].
     fn fuse (self: Self)
       -> Fuse<Self>
     where
@@ -270,6 +381,7 @@ where
         Fuse(Some(self))
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::nth()`].
     fn nth (
         self: &'_ mut Self,
         n: usize,
@@ -281,6 +393,7 @@ where
         self.next()
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::position()`].
     fn position<F> (
         self: &'_ mut Self,
         mut predicate: impl FnMut(Item<'_, Self>) -> bool,
@@ -300,6 +413,7 @@ where
         }
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::skip()`].
     fn skip (
         self: Self,
         count: usize,
@@ -313,6 +427,7 @@ where
         }
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::skip_while()`].
     #[cfg(TODO)]
     fn skip_while<F> (
         self: Self,
@@ -325,6 +440,7 @@ where
         SkipWhile { iter: self, predicate }
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::take()`].
     fn take (
         self: Self,
         count: usize,
@@ -338,6 +454,7 @@ where
         }
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::take_while()`].
     #[cfg(TODO)]
     fn take_while<F> (
         self: Self,
@@ -350,6 +467,36 @@ where
         TakeWhile(self)
     }
 
+    /// [`LendingIterator`] counterpart of [`Iterator::map()`].
+    ///
+    ///   - **Turbofishing the `NewItemType` is mandatory**, otherwise you'll
+    ///     run into issues with non-higher-order closures.
+    ///
+    ///     See the module-level documentation of [`crate::higher_kinded_types`]
+    ///     for more info.
+    ///
+    ///     But the TL,DR is that you'd use it as:
+    ///
+    ///     <code>lending_iter.map::\<[HKT!]\(ReturnType\<\'_\>\), _>\(</code>
+    ///
+    ///   - the second idiosyncracy is that, for technical reasons[^1] related
+    ///     to the maximally generic aspect of this API, the closure itself
+    ///     cannot just be a `Self::Item<'_> -> Feed<'_, NewItemType>` closure,
+    ///     and instead, requires that an extra `[]` dummy parameter be part
+    ///     of the signature:
+    ///
+    ///     ```rust
+    ///     # #[cfg(any)] macro_rules! ignore { /*
+    ///     lending_iter.map::<HKT…, _>(|[], item| { … })
+    ///                                  👆
+    ///     # */ }
+    ///     ```
+    ///
+    /// [^1]: In the case where `Self::Item<'_>` does _not_ depend on `'_`, the
+    /// return type then technically can't depend on it either, so Rust
+    /// complains about this (in a rather obtuse fashion). We solve this by
+    /// requiring that extra `[]` parameter which acts as a convenient-to-write
+    /// `PhantomData` which does depend on `'_`.
     fn map<NewItemType : HKT, F> (
         self: Self,
         f: F,
@@ -357,7 +504,7 @@ where
     where
         for<'next>
             F : FnMut(
-                [&'next (); 0],
+                [&'next Self; 0],
                 Item<'next, Self>,
             ) -> A!(NewItemType<'next>)
         ,
@@ -366,57 +513,111 @@ where
         Map { iter: self, map: f, _phantom_ty: <_>::default() }
     }
 
-    fn and_then<NewItemType : HKT, F> (
-        self: Self,
-        f: F,
-    ) -> AndThen<Self, F, NewItemType>
-    where
-        for<'next>
-            F : FnMut(
-                [&'next (); 0],
-                Item<'next, Self>,
-            ) -> Option<A!(NewItemType<'next>)>
-        ,
-        Self : Sized,
-    {
-        AndThen { iter: self, map: f, _phantom_ty: <_>::default() }
-    }
-
     pervasive_hkt_choices! {
         (map, Map)(
-            map_to_ref: [R : ?Sized] [&'any R] -> &'any R,
-            map_to_mut: [R : ?Sized] [&'any mut R] -> &'any mut R,
-            // map_to_owned: [R] [R] -> R,
-        ),
-        (and_then, AndThen)(
-            and_then_to_ref: [R : ?Sized] [&'any R] -> Option<&'any R>,
-            and_then_to_mut: [R : ?Sized] [&'any mut R] -> Option<&'any mut R>,
-            // and_then_to_owned: [R] [R] -> Option<R>,
+            /// Convenience method: same as [`.map()`][Self::map()], but for
+            /// hard-coding the `HKT` parameter to
+            /// <code>[HKTRef]\<R\> = [HKT!]\(\&R\)</code>.
+            ///
+            /// This alleviates the call-sites (no more turbofishing needed!)
+            /// for such pervasive use cases 🙂
+            map_to_ref: [R : ?Sized], HKTRef<R>, -> &'any R,
+            /// Convenience method: same as [`.map()`][Self::map()], but for
+            /// hard-coding the `HKT` parameter to
+            /// <code>[HKTRefMut]\<R\> = [HKT!]\(\&mut R\)</code>.
+            ///
+            /// This alleviates the call-sites (no more turbofishing needed!)
+            /// for such pervasive use cases 🙂
+            map_to_mut: [R : ?Sized], HKTRefMut<R>, -> &'any mut R,
         ),
     }
 
-    fn map_into_iter<F, Owned> (
+    /// Convenience shorthand for
+    /// <code>[.map…\(…\)][Self::map()][.into_iter()][Self::into_iter()]</code>.
+    ///
+    /// When the return type of the `.map()` closure is not lending
+    /// / borrowing from `*self`, it becomes possible to call
+    /// [.into_iter()][Self::into_iter()] on it right away.
+    ///
+    /// Moreover, it makes the `[], ` closure arg hack no longer necessary.
+    ///
+    /// This convenience function encompasses both things, thence returning
+    /// an [`Iterator`] (not a [`LendingIterator`]!).
+    fn map_into_iter<F, NonLendingItem> (
         self: Self,
         f: F,
     ) -> MapIntoIter<Self, F>
     where
-        F : FnMut(Item<'_, Self>) -> Owned,
+        F : FnMut(Item<'_, Self>) -> NonLendingItem,
         Self : Sized,
     {
         MapIntoIter(self, f)
     }
 
-    fn and_then_into_iter<F, Owned> (
+    /// [`LendingIterator`] counterpart of [`Iterator::filter_map()`].
+    ///
+    /// All the caveats and remarks of [`.map()`][Self::map()] apply, go check
+    /// them up.
+    fn filter_map<NewItemType : HKT, F> (
         self: Self,
         f: F,
-    ) -> AndThenIntoIter<Self, F>
+    ) -> FilterMap<Self, F, NewItemType>
     where
-        F : FnMut(Item<'_, Self>) -> Option<Owned>,
+        for<'next>
+            F : FnMut(
+                [&'next Self; 0],
+                Item<'next, Self>,
+            ) -> Option<A!(NewItemType<'next>)>
+        ,
         Self : Sized,
     {
-        AndThenIntoIter(self, f)
+        FilterMap { iter: self, map: f, _phantom_ty: <_>::default() }
     }
 
+    pervasive_hkt_choices! {
+        (filter_map, FilterMap)(
+            /// Convenience method: same as
+            /// [`.filter_map()`][Self::filter_map()], but for hard-coding the
+            /// `HKT` parameter to <code>[HKTRef]\<R\> = [HKT!]\(\&R\)</code>.
+            ///
+            /// All the caveats and remarks of
+            /// [`.map_to_ref()`][Self::map_to_ref()] apply, go check them up.
+            filter_map_to_ref: [R : ?Sized], HKTRef<R>, -> Option<&'any R>,
+
+            /// Convenience method: same as
+            /// [`.filter_map()`][Self::filter_map()], but for hard-coding the
+            /// `HKT` parameter to <code>[HKTRefMut]\<R\> = [HKT!]\(\&mut R\)</code>.
+            ///
+            /// All the caveats and remarks of
+            /// [`.map_to_mut()`][Self::map_to_mut()] apply, go check them up.
+            filter_map_to_mut: [R : ?Sized], HKTRefMut<R>, -> Option<&'any mut R>,
+        ),
+    }
+
+    /// Convenience shorthand for
+    /// <code>[.filter_map…\(…\)][Self::filter_map()][.into_iter()][Self::into_iter()]</code>.
+    ///
+    /// When the return type of the `.filter_map()` closure is not lending
+    /// / borrowing from `*self`, it becomes possible to call
+    /// [.into_iter()][Self::into_iter()] on it right away.
+    ///
+    /// Moreover, it makes the `[], ` closure arg hack no longer necessary.
+    ///
+    /// This convenience function encompasses both things, thence returning
+    /// an [`Iterator`] (not a [`LendingIterator`]!).
+    fn filter_map_into_iter<F, NonLendingItem> (
+        self: Self,
+        f: F,
+    ) -> FilterMapIntoIter<Self, F>
+    where
+        F : FnMut(Item<'_, Self>) -> Option<NonLendingItem>,
+        Self : Sized,
+    {
+        FilterMapIntoIter(self, f)
+    }
+
+    /// Convert a <code>Self : [LendingIterator]</code> into an [`Iterator`],
+    /// **provided `Self::Item<'_>` does not depend on `'_`**.
     fn into_iter<Item> (
         self: Self,
     ) -> IntoIter<Self>
@@ -427,17 +628,38 @@ where
         IntoIter(self)
     }
 
+    /// Converts this [`LendingIterator`] into a
+    /// <code>[Box][::alloc::boxed::Box]\<dyn [LendingIteratorDyn]…\></code>.
+    ///
+    /// Note that the return `dyn Trait` will not be `Send` or implement any
+    /// other auto-traits. For a more general albeit harder-on-type-inference
+    /// alternative, see [`.dyn_boxed_auto()`][Self::dyn_boxed_auto()].
     #[apply(cfg_alloc)]
     fn dyn_boxed<'usability> (
         self: Self
-    ) -> Box<dyn 'usability + LendingIteratorDyn<Item = HKTItem<Self>>>
+    ) -> ::alloc::boxed::Box<dyn
+            'usability + LendingIteratorDyn<Item = HKTItem<Self>>
+        >
     where
         Self : 'usability,
         Self : Sized,
     {
-        Box::new(self)
+        ::alloc::boxed::Box::new(self)
     }
 
+    /// Converts this [`LendingIterator`] into a
+    /// <code>[Box][::alloc::boxed::Box]\<dyn [LendingIteratorDyn]…\></code>.
+    ///
+    /// In order for it to work, the `Item` parameter has to be provided
+    /// (probably funneled through a [`CanonicalHKT`]), as well as an explicit
+    /// "landing type" (inference will probably fail to figure it out!).
+    ///
+    /// That is, `BoxedDynLendingIterator` is expected to be of the form:
+    ///
+    /// <code>[Box]\<dyn \'lt \[+ Send\] \[+ Sync\] + [LendingIteratorDyn]\<Item = [CanonicalHKT]\<…\>\>\></code>
+    ///
+    /// [Box]: ::alloc::boxed::Box
+    /// [CanonicalHKT]: crate::prelude::CanonicalHKT
     fn dyn_boxed_auto<BoxedDynLendingIterator, Item : HKT> (self: Self)
       -> BoxedDynLendingIterator
     where
@@ -448,67 +670,33 @@ where
 }
 )}
 
-#[doc(hidden)] // Let's not overwhelm users of the crate with info.
-pub
-trait DynCoerce<T, Item> : Sized {
-    fn coerce(self: Self) -> T;
-}
-
-#[apply(cfg_alloc)]
-r#dyn::with_auto_traits! {( $($AutoTraits:tt)* ) => (
-    impl<'I, I : 'I, Item>
-        DynCoerce<
-            Box<dyn
-                'I + LendingIteratorDyn<Item = CanonicalHKT<Item>> +
-                $($AutoTraits)*
-            >,
-            Item,
-        >
-    for
-        I
-    where
-        Item : HKT,
-        I : LendingIteratorDyn<Item = CanonicalHKT<Item>>,
-        I : $($AutoTraits)* ,
-    {
-        fn coerce (self: I)
-          -> Box<dyn
-                'I + LendingIteratorDyn<Item = CanonicalHKT<Item>> +
-                $($AutoTraits)*
-            >
-        {
-            Box::new(self)
-        }
-    }
-)}
-
 macro_rules! pervasive_hkt_choices {(
     $(
         ($map:ident, $Map:ident)(
             $(
-                $([$attr:meta])*
-                $fname:ident: [$($R:tt)*] [$HKT:ty] -> $Ret:ty,
+                $(#[$attr:meta])*
+                $fname:ident: [$($R:tt)*], $HKT:ty, -> $Ret:ty,
             )*
         ),
     )*
 ) => (
     $(
         $(
-            $([$attr])*
+            $(#[$attr])*
             fn $fname<$($R)*, F> (
                 self: Self,
                 f: F,
-            ) -> $Map<Self, F, HKT!(<'any> => $HKT)>
+            ) -> $Map<Self, F, $HKT>
             where
                 for<'any>
                     F : FnMut(
-                        [&'any (); 0],
+                        [&'any Self; 0],
                         Item<'any, Self>,
                     ) -> $Ret
                 ,
                 Self : Sized,
             {
-                self.$map::<HKT!(<'any> => $HKT), F>(f)
+                self.$map::<$HKT, F>(f)
             }
         )*
     )*

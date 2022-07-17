@@ -1,3 +1,8 @@
+/*!
+[`windows_mut()`]: windows_mut()
+[HKT!]: higher_kinded_types::HKT!
+[higher-kinded]: higher_kinded_types
+*/
 #![cfg_attr(feature = "better-docs",
     cfg_attr(all(), doc = include_str!("../README.md")),
     feature(doc_cfg, doc_notable_trait),
@@ -8,30 +13,53 @@
 #![forbid(unsafe_code)]
 #![allow(nonstandard_style, uncommon_codepoints)]
 
-#[cfg(feature = "alloc")]
-extern crate alloc;
+#[macro_use]
+mod utils;
 
 #[doc(inline)]
 pub use self::{
     lending_iterator::{
-        from_fn,
-        from_iter,
         LendingIterator,
-        windows_mut::windows_mut,
+        constructors::{
+            FromFn,
+            from_fn,
+            from_iter,
+            repeat_mut,
+            windows_mut_::windows_mut,
+        },
     },
 };
+
+/// <code>[#\[::nougat::gat\]]</code>
+///
+/// [#\[::nougat::gat\]]: https://docs.rs/nougat/*/nougat/attr.gat.html
+///
+/// Using this attribute is needed when implementing `LendingIterator` for your
+/// own types, as well as **for reëxporting the `LendingIterator` trait**,
+/// itself, in a way that remains compatible with further downstream
+/// implementations down the line: `#[gat(Item)] use …::LendingIterator;`.
+///
+///   - See the documentation of <code>[#\[::nougat::gat\]]</code> for more info
+///     about this.
+pub use ::nou::gat;
+
+#[doc(inline)]
+#[apply(cfg_futures)]
+pub use self::lending_iterator::constructors::from_stream;
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
+#[macro_use]
+extern crate extension_traits;
 
 #[macro_use]
 extern crate macro_rules_attribute;
 
-// #[macro_use]
 extern crate nougat as nou;
 
 #[macro_use]
 extern crate polonius_the_crab;
-
-#[macro_use]
-mod utils;
 
 pub
 mod higher_kinded_types;
@@ -50,7 +78,6 @@ mod ඞ {
     pub use {
         ::core::{ // or `std`
             self,
-            marker::PhantomData,
         },
         ::lending_iterator_proc_macros::{
             self,
