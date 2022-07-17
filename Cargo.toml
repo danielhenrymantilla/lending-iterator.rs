@@ -17,8 +17,8 @@ readme = "README.md"
 
 rust-version = "1.57.0"
 
-# description = "…"
-# keywords = []
+description = "Fully general lending iterators in stable rust: windows_mut!"
+keywords = ["rust-patterns"]
 
 [features]
 default = [
