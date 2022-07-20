@@ -2,6 +2,7 @@
 [`windows_mut()`]: windows_mut()
 [HKT!]: higher_kinded_types::HKT!
 [higher-kinded]: higher_kinded_types
+[`lending_iterator::adapters`]: lending_iterator::adapters
 */
 #![cfg_attr(feature = "better-docs",
     cfg_attr(all(), doc = include_str!("../README.md")),

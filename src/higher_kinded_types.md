@@ -103,7 +103,7 @@ HKTs come into play the moment we need "generic generics".
 
   - #### Type-HKTs
 
-    <details><summary>Click to show</summary>
+    <details><summary>Click to see</summary>
 
     Consider the following pseudo-code:
 

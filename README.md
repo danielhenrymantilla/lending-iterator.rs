@@ -115,44 +115,64 @@ assert_eq!(
 
 ### `LendingIterator` adapters
 
+See [`lending_iterator::adapters`].
+
+___
+
+</details>
+
+# Bonus: Higher-Kinded Types (HKT)
+
+See [`higher_kinded_types`][higher-kinded] for a presentation about them.
+
+### Real-life usage: `.sort_by_key()` that is fully generic over the key lending mode
+
+As noted in this **6-year-old issue**:
+
+  - [`slice::sort_by_key` has more restrictions than `slice::sort_by`](
+    https://github.com/rust-lang/rust/issues/34162)
+
+Such an API can easily be provided using the HKT API of this crate:
+
+<details><summary>Click to see</summary>
+
 ```rust
-use ::lending_iterator::prelude::*;
+use ::lending_iterator::higher_kinded_types::{*, Apply as A};
 
-let mut array = [0; 15];
-array[1] = 1;
-// Let's hand-roll our iterator lending `&mut` sliding windows:
-let mut iter = {
-        // initial state:
-    ::lending_iterator::repeat_mut((&mut array, 0))
-        // main logic (lending _slices_):
-        .filter_map::<HKT!(&mut [u16]), _>(|[], (array, start)| {
-            let to_yield =
-                array
-                    .get_mut(*start..)?
-                    .get_mut(..3)?
-            ;
-            *start += 1;
-            Some(to_yield)
-        })
-        // tiny type adaptor (lending _arrays_):
-        .map_to_mut(|[], slice| <&mut [u16; 3]>::try_from(slice).unwrap())
-    //   ⬑convenience (no need to turbofish an HKT) that is equivalent to:
-    //  .map::<HKT!(&mut [u16; 3]), _>(|[], slice| <_>::try_from(slice).unwrap())
-};
-while let Some(&mut [a, b, ref mut next]) = iter.next() {
-    *next = a + b;
+fn slice_sort_by_key<Key, Item, KeyGetter> (
+    slice: &'_ mut [Item],
+    mut get_key: KeyGetter,
+)
+where
+    Key : HKT, // "Key : <'_>"
+    for<'any>
+        A!(Key<'any>) : Ord
+    ,
+    KeyGetter : FnMut(&Item) -> A!(Key<'_>),
+{
+    slice.sort_by(|a, b| Ord::cmp(
+        &get_key(a),
+        &get_key(b),
+    ))
 }
-assert_eq!(
-    array,
-    [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377],
-);
-```
 
-  - Notice how any adapters that return a lending / dependent type (such as
-    `&mut …` for `.{filter_,}map()`) are required to take an extra `[]`
-    "dummy" parameter for the closure input. This is due to a technical
-    limitation of the language, and having to add `[], ` was the least
-    cumbersome way that I could find to work around it 😔
+// ---- Demo ----
+
+struct Client { key: String, version: u8 }
+
+fn main() {
+    let clients: &mut [Client] = &mut [];
+
+    // Error: cannot infer an appropriate lifetime for autoref due to conflicting requirements
+    // clients.sort_by_key(|c| &c.key);
+
+    // OK
+    slice_sort_by_key::<HKT!(&str), _, _>(clients, |c| &c.key);
+
+    // Important: owned case works too!
+    slice_sort_by_key::<HKT!(u8), _, _>(clients, |c| c.version);
+}
+```
 
 ___
 
@@ -163,3 +183,4 @@ ___
 [`windows_mut()`]: https://docs.rs/lending-iterator/0.1.*/fn.windows_mut.html
 [HKT!]: https://docs.rs/lending-iterator/0.1.*/lending_iterator/higher_kinded_types/macro.HKT.html
 [higher-kinded]: https://docs.rs/lending-iterator/0.1.*/lending_iterator/higher_kinded_types
+[`lending_iterator::adapters`]: https://docs.rs/lending-iterator/0.1.*/lending_iterator/lending_iterator/adapters

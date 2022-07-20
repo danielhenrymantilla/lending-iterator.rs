@@ -23,7 +23,6 @@ pub use self::{
     r#dyn::LendingIteratorDyn,
 };
 
-/// [`LendingIterator`] adapters.
 #[path = "adapters/_mod.rs"]
 pub
 mod adapters;
