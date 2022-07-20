@@ -55,7 +55,7 @@ let mut array = [0; 15];
 array[1] = 1;
 // Cumulative sums are trivial with a `mut` sliding window,
 // so let's showcase that by generating a Fibonacci sequence.
-let mut iter = array.windows_mut::<3>(); // windows_mut::<_, 3>(&mut array);
+let mut iter = array.windows_mut::<3>();
 while let Some(&mut [a, b, ref mut next]) = iter.next() {
     *next = a + b;
 }
@@ -78,10 +78,10 @@ array[1] = 1;
 let mut iter = {
     let mut start = 0;
     lending_iterator::FromFn::<HKT!(&mut [u16; 3]), _, _> {
-        state: &mut array[..],
-        next: move |slice| {
+        state: &mut array,
+        next: move |array| {
             let to_yield =
-                slice
+                array
                     .get_mut(start..)?
                     .get_mut(..3)?
                     .try_into() // `&mut [u8] -> &mut [u8; 3]`
@@ -115,40 +115,64 @@ assert_eq!(
 
 ### `LendingIterator` adapters
 
+See [`lending_iterator::adapters`].
+
+___
+
+</details>
+
+# Bonus: Higher-Kinded Types (HKT)
+
+See [`higher_kinded_types`][higher-kinded] for a presentation about them.
+
+### Real-life usage: `.sort_by_key()` that is fully generic over the key lending mode
+
+As noted in this **6-year-old issue**:
+
+  - [`slice::sort_by_key` has more restrictions than `slice::sort_by`](
+    https://github.com/rust-lang/rust/issues/34162)
+
+Such an API can easily be provided using the HKT API of this crate:
+
+<details><summary>Click to see</summary>
+
 ```rust
-use ::lending_iterator::prelude::*;
+use ::lending_iterator::higher_kinded_types::{*, Apply as A};
 
-let mut array = [0; 15];
-array[1] = 1;
-// Let's hand-roll our iterator lending `&mut` sliding windows:
-let mut iter = {
-    ::lending_iterator::repeat_mut((0, &mut array))
-        .filter_map_to_mut(|[], (start, array)| -> Option<&mut [u16]> {
-            let to_yield =
-                array
-                    .get_mut(*start..)?
-                    .get_mut(..3)?
-            ;
-            *start += 1;
-            Some(to_yield)
-        })
-        .map_to_mut::<[u16; 3], _>(|[], slice| slice.try_into().unwrap())
-};
-while let Some(&mut [a, b, ref mut next]) = iter.next() {
-    *next = a + b;
+fn slice_sort_by_key<Key, Item, KeyGetter> (
+    slice: &'_ mut [Item],
+    mut get_key: KeyGetter,
+)
+where
+    Key : HKT, // "Key : <'_>"
+    for<'any>
+        A!(Key<'any>) : Ord
+    ,
+    KeyGetter : FnMut(&Item) -> A!(Key<'_>),
+{
+    slice.sort_by(|a, b| Ord::cmp(
+        &get_key(a),
+        &get_key(b),
+    ))
 }
-// drop(iter);
-assert_eq!(
-    array,
-    [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377],
-);
-```
 
-  - Notice how any adapters that return a lending / dependent type (such as
-    `&mut` for `{and_then, map}_to_mut()`) are required to take an extra `[]`
-    "dummy" parameter for the closure input. This is due to a technical
-    limitation of the language, and having to add `[], ` was the least
-    cumbersome way that I could find to work around it 😔
+// ---- Demo ----
+
+struct Client { key: String, version: u8 }
+
+fn main() {
+    let clients: &mut [Client] = &mut [];
+
+    // Error: cannot infer an appropriate lifetime for autoref due to conflicting requirements
+    // clients.sort_by_key(|c| &c.key);
+
+    // OK
+    slice_sort_by_key::<HKT!(&str), _, _>(clients, |c| &c.key);
+
+    // Important: owned case works too!
+    slice_sort_by_key::<HKT!(u8), _, _>(clients, |c| c.version);
+}
+```
 
 ___
 
@@ -159,3 +183,4 @@ ___
 [`windows_mut()`]: https://docs.rs/lending-iterator/0.1.*/fn.windows_mut.html
 [HKT!]: https://docs.rs/lending-iterator/0.1.*/lending_iterator/higher_kinded_types/macro.HKT.html
 [higher-kinded]: https://docs.rs/lending-iterator/0.1.*/lending_iterator/higher_kinded_types
+[`lending_iterator::adapters`]: https://docs.rs/lending-iterator/0.1.*/lending_iterator/lending_iterator/adapters
