@@ -578,6 +578,8 @@ This, in real Rust, comes with three challenges:
     use ::lending_iterator::higher_kinded_types::HKT;
 
     type StringRef = HKT!(<'lt> => &'lt str);
+    // or use elided lifetimes as "higher-order tokens":
+    type StringRef2 = HKT!(&str); // <- same as `StringRef`!
     ```
 
     More on this below.
@@ -619,9 +621,6 @@ trait WithLifetime<'lt> {
 trait HKT = for<'any> WithLifetime<'any>;
 # }
 ```
-
-From there, here are the following key ideas to keep in mind when using this
-crate.
 
 </details>
 

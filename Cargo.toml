@@ -7,7 +7,7 @@ name = "lending-iterator"
 authors = [
     "Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>",
 ]
-version = "0.1.0"  # Keep in sync
+version = "0.1.1"  # Keep in sync
 edition = "2021"
 
 license = "Zlib OR MIT OR Apache-2.0"
@@ -50,7 +50,7 @@ macro-vis.version = "0.1.1"
 
 [dependencies.lending-iterator-proc_macros]
 path = "src/proc_macros"
-version = "0.1.0"  # Keep in sync
+version = "0.1.1"  # Keep in sync
 
 [dev-dependencies]
 

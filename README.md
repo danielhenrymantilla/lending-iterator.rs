@@ -55,7 +55,7 @@ let mut array = [0; 15];
 array[1] = 1;
 // Cumulative sums are trivial with a `mut` sliding window,
 // so let's showcase that by generating a Fibonacci sequence.
-let mut iter = array.windows_mut::<3>(); // windows_mut::<_, 3>(&mut array);
+let mut iter = array.windows_mut::<3>();
 while let Some(&mut [a, b, ref mut next]) = iter.next() {
     *next = a + b;
 }
@@ -78,10 +78,10 @@ array[1] = 1;
 let mut iter = {
     let mut start = 0;
     lending_iterator::FromFn::<HKT!(&mut [u16; 3]), _, _> {
-        state: &mut array[..],
-        next: move |slice| {
+        state: &mut array,
+        next: move |array| {
             let to_yield =
-                slice
+                array
                     .get_mut(start..)?
                     .get_mut(..3)?
                     .try_into() // `&mut [u8] -> &mut [u8; 3]`
@@ -122,8 +122,10 @@ let mut array = [0; 15];
 array[1] = 1;
 // Let's hand-roll our iterator lending `&mut` sliding windows:
 let mut iter = {
-    ::lending_iterator::repeat_mut((0, &mut array))
-        .filter_map_to_mut(|[], (start, array)| -> Option<&mut [u16]> {
+        // initial state:
+    ::lending_iterator::repeat_mut((&mut array, 0))
+        // main logic (lending _slices_):
+        .filter_map::<HKT!(&mut [u16]), _>(|[], (array, start)| {
             let to_yield =
                 array
                     .get_mut(*start..)?
@@ -132,12 +134,14 @@ let mut iter = {
             *start += 1;
             Some(to_yield)
         })
-        .map_to_mut::<[u16; 3], _>(|[], slice| slice.try_into().unwrap())
+        // tiny type adaptor (lending _arrays_):
+        .map_to_mut(|[], slice| <&mut [u16; 3]>::try_from(slice).unwrap())
+    //   ⬑convenience (no need to turbofish an HKT) that is equivalent to:
+    //  .map::<HKT!(&mut [u16; 3]), _>(|[], slice| <_>::try_from(slice).unwrap())
 };
 while let Some(&mut [a, b, ref mut next]) = iter.next() {
     *next = a + b;
 }
-// drop(iter);
 assert_eq!(
     array,
     [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377],
@@ -145,7 +149,7 @@ assert_eq!(
 ```
 
   - Notice how any adapters that return a lending / dependent type (such as
-    `&mut` for `{and_then, map}_to_mut()`) are required to take an extra `[]`
+    `&mut …` for `.{filter_,}map()`) are required to take an extra `[]`
     "dummy" parameter for the closure input. This is due to a technical
     limitation of the language, and having to add `[], ` was the least
     cumbersome way that I could find to work around it 😔
