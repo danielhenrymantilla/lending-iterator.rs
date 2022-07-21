@@ -2,7 +2,7 @@
 //!
 //! # Example
 //!
-//! <details open class="custom"><summary><span class="summary-box"><span class="summary-to-see">Click to see</span><span class="summary-to-hide">Click to hide</span></span></summary>
+//! <details open class="custom"><summary><span class="summary-box"><span>Click to hide</span></span></summary>
 //!
 /*!  - ```rust
     use ::lending_iterator::prelude::*;

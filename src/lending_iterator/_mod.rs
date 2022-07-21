@@ -91,7 +91,7 @@ type Item<'lt, I : LendingIterator> =
 /// type of the `fn next(&'_ mut self)` method being allowed to depend on that
 /// `'_`**.
 ///
-/// <details open class="custom"><summary><span class="summary-box"><span class="summary-to-see">Click to see</span><span class="summary-to-hide">Click to hide</span></span></summary>
+/// <details open class="custom"><summary><span class="summary-box"><span>Click to hide</span></span></summary>
 ///
 ///   - That type is called the `Item<'_>` type, and is a
 ///     [`generic_associated_type`](#a-generic-associated-type).

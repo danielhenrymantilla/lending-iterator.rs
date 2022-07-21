@@ -1,4 +1,7 @@
 <style>
+@import url('http://fonts.cdnfonts.com/css/apercu');
+@import url('http://fonts.cdnfonts.com/css/fira-code-2');
+
 details.custom > summary {
     display: list-item;
     /* https://medium.com/simple-human/buttons-shouldnt-have-a-hand-cursor-b11e99ca374b */
@@ -9,13 +12,23 @@ details.custom > summary {
     display: inline-block;
 }
 
-details.custom > summary span.summary-to-hide,
-details[open].custom > summary span.summary-to-see {
-    display: none;
+details.custom > summary > .summary-box > span {
+    visibility: hidden;
+    position: relative;
 }
-details.custom > summary span.summary-to-see,
-details[open].custom > summary span.summary-to-hide {
-    display: inline;
+details.custom > summary > .summary-box > span:after {
+    content: "Click to show";
+    visibility: visible;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+details[open].custom > summary > .summary-box > span:after {
+    content: "Click to hide";
+    visibility: visible;
+    position: absolute;
+    top: 0;
+    left: 0;
 }
 
 /**
@@ -23,7 +36,7 @@ details[open].custom > summary span.summary-to-hide {
  *        MIT-Licensed under the name of Chad Mazzola
  *       rev: c5d2eccd18c0be21c291982e40da0c590f8bc32f
  *
- *  I changed the following: I removed the padding, the width and `cursor: pointer`.
+ *  I made a few changes, the original is then commented out just above each.
  **/
 .summary-box {
   background-color: #eeeeee;
@@ -37,8 +50,10 @@ details[open].custom > summary span.summary-to-hide {
   border-bottom: 1px solid #bbb;
   border-radius: 3px;
   color: #333;
-  font: bold 11px/1 "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", Geneva, Verdana, sans-serif;
+  /* font: bold 11px/1 "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", Geneva, Verdana, sans-serif; */
+  font: bold 11px/1 "Fira Code", "Apercu Mono", "Courier New", sans-serif;
   /* padding: 8px 0; */
+  padding-top: 2px;
   text-align: center;
   text-shadow: 0 1px 0 #eee;
   /* width: 150px; */
