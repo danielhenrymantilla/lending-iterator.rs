@@ -31,14 +31,6 @@ where
         self: &'_ mut Filter<I, F>,
     ) -> Option<Item<'_, I>>
     {
-        use ::polonius_the_crab::prelude::*;
-        let mut iter = &mut self.iter;
-        polonius_loop!(|iter| -> Option<Item<'polonius, I>> {
-            let ret = iter.next();
-            if matches!(ret, Some(ref it) if (self.should_yield)(it).not()) {
-                polonius_continue!();
-            }
-            polonius_return!(ret);
-        })
+        self.iter.find(&mut self.should_yield)
     }
 }

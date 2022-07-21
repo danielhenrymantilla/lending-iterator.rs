@@ -659,6 +659,7 @@ where
     ///
     /// [Box]: ::alloc::boxed::Box
     /// [CanonicalHKT]: crate::prelude::CanonicalHKT
+    #[apply(cfg_alloc)]
     fn dyn_boxed_auto<BoxedDynLendingIterator, Item : HKT> (self: Self)
       -> BoxedDynLendingIterator
     where
@@ -670,34 +671,27 @@ where
 )}
 
 macro_rules! pervasive_hkt_choices {(
-    $(
-        ($map:ident, $Map:ident)(
-            $(
-                $(#[$attr:meta])*
-                $fname:ident: [$($R:tt)*], $HKT:ty, -> $Ret:ty,
-            )*
-        ),
-    )*
+    ($map:ident, $Map:ident)(
+        $(
+            $(#[$attr:meta])*
+            $fname:ident: [$($R:tt)*], $HKT:ty, -> $Ret:ty,
+        )*
+    ) $(,)?
 ) => (
     $(
-        $(
-            $(#[$attr])*
-            fn $fname<$($R)*, F> (
-                self: Self,
-                f: F,
-            ) -> $Map<Self, F, $HKT>
-            where
-                for<'any>
-                    F : FnMut(
-                        [&'any Self; 0],
-                        Item<'any, Self>,
-                    ) -> $Ret
-                ,
-                Self : Sized,
-            {
-                self.$map::<$HKT, F>(f)
-            }
-        )*
+        $(#[$attr])*
+        fn $fname<$($R)*, F> (
+            self: Self,
+            f: F,
+        ) -> $Map<Self, F, $HKT>
+        where
+            for<'any>
+                F : FnMut([&'any Self; 0], Item<'any, Self>) -> $Ret
+            ,
+            Self : Sized,
+        {
+            self.$map::<$HKT, F>(f)
+        }
     )*
 )} use pervasive_hkt_choices;
 
