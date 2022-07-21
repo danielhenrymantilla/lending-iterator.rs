@@ -18,7 +18,13 @@ readme = "README.md"
 rust-version = "1.57.0"
 
 description = "Fully general lending iterators in stable rust: windows_mut!"
-keywords = ["rust-patterns"]
+keywords = [
+    "streaming",
+    "streaming-iterator",
+    "windows_mut",
+    "hkt",
+    "gat",
+]
 
 [features]
 default = [
