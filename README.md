@@ -44,7 +44,7 @@ Fully generic `LendingIterator`s in stable Rust.
 
 ## Examples
 
-<details open class="custom"><summary><span class="summary-box"><span class="summary-to-see">Click to see</span><span class="summary-to-hide">Click to hide</span></span></summary>
+<details open class="custom"><summary><span class="summary-box">Click to see/hide</span></summary>
 
 ### `windows_mut()`!
 
@@ -134,7 +134,7 @@ As noted in this **6-year-old issue**:
 
 Such an API can easily be provided using the HKT API of this crate:
 
-<details class="custom"><summary><span class="summary-box"><span class="summary-to-see">Click to see</span><span class="summary-to-hide">Click to hide</span></span></summary>
+<details class="custom"><summary><span class="summary-box">Click to see/hide</summary>
 
 ```rust
 use ::lending_iterator::higher_kinded_types::{*, Apply as A};
