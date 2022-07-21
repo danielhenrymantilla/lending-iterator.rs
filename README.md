@@ -1,7 +1,5 @@
 # `::lending-iterator`
 
-Fully generic `LendingIterator`s in stable Rust.
-
 [![Repository](https://img.shields.io/badge/repository-GitHub-brightgreen.svg)](
 https://github.com/danielhenrymantilla/lending-iterator.rs)
 [![Latest version](https://img.shields.io/crates/v/lending-iterator.svg)](
@@ -18,6 +16,8 @@ https://github.com/danielhenrymantilla/lending-iterator.rs/blob/master/LICENSE-Z
 https://github.com/danielhenrymantilla/lending-iterator.rs/actions)
 
 <!-- Templated by `cargo-generate` using https://github.com/danielhenrymantilla/proc-macro-template -->
+
+Fully generic `LendingIterator`s in stable Rust.
 
   - this pattern used to be called `StreamingIterator`, but since [`Stream`](
     https://docs.rs/futures/0.3.21/futures/stream/trait.Stream.html)s entered
