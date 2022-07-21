@@ -1,7 +1,5 @@
 # `::lending-iterator`
 
-Fully generic `LendingIterator`s in stable Rust.
-
 [![Repository](https://img.shields.io/badge/repository-GitHub-brightgreen.svg)](
 https://github.com/danielhenrymantilla/lending-iterator.rs)
 [![Latest version](https://img.shields.io/crates/v/lending-iterator.svg)](
@@ -18,6 +16,8 @@ https://github.com/danielhenrymantilla/lending-iterator.rs/blob/master/LICENSE-Z
 https://github.com/danielhenrymantilla/lending-iterator.rs/actions)
 
 <!-- Templated by `cargo-generate` using https://github.com/danielhenrymantilla/proc-macro-template -->
+
+Fully generic `LendingIterator`s in stable Rust.
 
   - this pattern used to be called `StreamingIterator`, but since [`Stream`](
     https://docs.rs/futures/0.3.21/futures/stream/trait.Stream.html)s entered
@@ -44,7 +44,7 @@ https://github.com/danielhenrymantilla/lending-iterator.rs/actions)
 
 ## Examples
 
-<details open><summary>Click to hide</summary>
+<details open class="custom"><summary><span class="summary-box">Click to see/hide</span></summary>
 
 ### `windows_mut()`!
 
@@ -134,7 +134,7 @@ As noted in this **6-year-old issue**:
 
 Such an API can easily be provided using the HKT API of this crate:
 
-<details><summary>Click to see</summary>
+<details class="custom"><summary><span class="summary-box">Click to see/hide</summary>
 
 ```rust
 use ::lending_iterator::higher_kinded_types::{*, Apply as A};
@@ -145,10 +145,10 @@ fn slice_sort_by_key<Key, Item, KeyGetter> (
 )
 where
     Key : HKT, // "Key : <'_>"
-    for<'any>
-        A!(Key<'any>) : Ord
+    KeyGetter : for<'item> FnMut(&'item Item) -> A!(Key<'item>),
+    for<'item>
+        A!(Key<'item>) : Ord
     ,
-    KeyGetter : FnMut(&Item) -> A!(Key<'_>),
 {
     slice.sort_by(|a, b| Ord::cmp(
         &get_key(a),
@@ -160,7 +160,8 @@ where
 
 struct Client { key: String, version: u8 }
 
-fn main() {
+fn main ()
+{
     let clients: &mut [Client] = &mut [];
 
     // Error: cannot infer an appropriate lifetime for autoref due to conflicting requirements

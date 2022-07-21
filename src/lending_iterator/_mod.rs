@@ -91,7 +91,7 @@ type Item<'lt, I : LendingIterator> =
 /// type of the `fn next(&'_ mut self)` method being allowed to depend on that
 /// `'_`**.
 ///
-/// <details open><summary>Click to hide</summary>
+/// <details open class="custom"><summary><span class="summary-box"><span class="summary-to-see">Click to see</span><span class="summary-to-hide">Click to hide</span></span></summary>
 ///
 ///   - That type is called the `Item<'_>` type, and is a
 ///     [`generic_associated_type`](#a-generic-associated-type).
@@ -178,7 +178,7 @@ type Item<'lt, I : LendingIterator> =
 /// It does come with a few caveats, though: **the `LendingIterator::Item` item
 /// is no longer really nameable**, at least not _directly_.
 ///
-///   - The current implementation of [`::nougat]` uses a helper _higher-order_
+///   - The current implementation of [`::nougat`] uses a helper _higher-order_
 ///     super-trait, called
 ///     <code>for\<\'any\> [LendingIteratorඞItem]\<\'any\></code>, which has,
 ///     itself, a non-generic associated type, `::T`. That way,
@@ -187,13 +187,13 @@ type Item<'lt, I : LendingIterator> =
 ///
 ///     **BUT THIS MAY change within semver-compatible changes of `nougat`**
 ///
-///     Thence why that path should never be used, directly, by downstream code.
+///     That's why that path should never be used, directly, by downstream code.
 ///
 ///     The only reason I am even talking about it and not having it
 ///     `#[doc(hidden)]` is that exposing it makes understanding the signatures
 ///     of the adapters multiple order of magnitude easier.
 ///
-/// Thence the following "rules":
+/// Hence the following "rules":
 ///
 ///   - Use <code>[Item]\<\'_, I\></code> instead of `I::Item<'_>`.
 ///
@@ -659,6 +659,7 @@ where
     ///
     /// [Box]: ::alloc::boxed::Box
     /// [CanonicalHKT]: crate::prelude::CanonicalHKT
+    #[apply(cfg_alloc)]
     fn dyn_boxed_auto<BoxedDynLendingIterator, Item : HKT> (self: Self)
       -> BoxedDynLendingIterator
     where
@@ -670,34 +671,27 @@ where
 )}
 
 macro_rules! pervasive_hkt_choices {(
-    $(
-        ($map:ident, $Map:ident)(
-            $(
-                $(#[$attr:meta])*
-                $fname:ident: [$($R:tt)*], $HKT:ty, -> $Ret:ty,
-            )*
-        ),
-    )*
+    ($map:ident, $Map:ident)(
+        $(
+            $(#[$attr:meta])*
+            $fname:ident: [$($R:tt)*], $HKT:ty, -> $Ret:ty,
+        )*
+    ) $(,)?
 ) => (
     $(
-        $(
-            $(#[$attr])*
-            fn $fname<$($R)*, F> (
-                self: Self,
-                f: F,
-            ) -> $Map<Self, F, $HKT>
-            where
-                for<'any>
-                    F : FnMut(
-                        [&'any Self; 0],
-                        Item<'any, Self>,
-                    ) -> $Ret
-                ,
-                Self : Sized,
-            {
-                self.$map::<$HKT, F>(f)
-            }
-        )*
+        $(#[$attr])*
+        fn $fname<$($R)*, F> (
+            self: Self,
+            f: F,
+        ) -> $Map<Self, F, $HKT>
+        where
+            for<'any>
+                F : FnMut([&'any Self; 0], Item<'any, Self>) -> $Ret
+            ,
+            Self : Sized,
+        {
+            self.$map::<$HKT, F>(f)
+        }
     )*
 )} use pervasive_hkt_choices;
 

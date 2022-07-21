@@ -7,7 +7,7 @@
 
 ### What are Higher-Kinded Types?
 
-<details><summary>Click to see</summary>
+<details class="custom"><summary><span class="summary-box"><span class="summary-to-see">Click to see</span><span class="summary-to-hide">Click to hide</span></span></summary>
 
 A higher-kinded type is an actual / **full / standalone** type which is, itself,
 "generic", or rather, to which we can further feed generic parameters (such as
@@ -99,11 +99,11 @@ HKTs come into play the moment we need "generic generics".
 
 ### Why? What are Higher-Kinded Types _for_?
 
-<details><summary>Click to see</summary>
+<details class="custom"><summary><span class="summary-box"><span class="summary-to-see">Click to see</span><span class="summary-to-hide">Click to hide</span></span></summary>
 
   - #### Type-HKTs
 
-    <details><summary>Click to see</summary>
+    <details class="custom"><summary><span class="summary-box"><span class="summary-to-see">Click to see</span><span class="summary-to-hide">Click to hide</span></span></summary>
 
     Consider the following pseudo-code:
 
@@ -172,7 +172,7 @@ HKTs come into play the moment we need "generic generics".
 
   - #### Lifetime HKTs
 
-    <details open><summary>Click to hide</summary>
+    <details open class="custom"><summary><span class="summary-box"><span class="summary-to-see">Click to see</span><span class="summary-to-hide">Click to hide</span></span></summary>
 
     Another use case can be around lifetimes, when dealing with higher-order
     lifetimes (_e.g._, when exposing borrows of callee local variables to a
@@ -442,7 +442,7 @@ HKTs come into play the moment we need "generic generics".
 
 ### How? → Back to real Rust
 
-<details><summary>Click to see</summary>
+<details class="custom"><summary><span class="summary-box"><span class="summary-to-see">Click to see</span><span class="summary-to-hide">Click to hide</span></span></summary>
 
 This, in real Rust, comes with three challenges:
 
@@ -626,7 +626,7 @@ trait HKT = for<'any> WithLifetime<'any>;
 
 ## The three important things to remember when working with these HKT APIs
 
-<details open><summary>Click to hide</summary>
+<details open class="custom"><summary><span class="summary-box"><span class="summary-to-see">Click to see</span><span class="summary-to-hide">Click to hide</span></span></summary>
 
  1. **APIs use `T : HKT` to express `T : <'lt>`**
 
@@ -735,7 +735,7 @@ trait HKT = for<'any> WithLifetime<'any>;
 
 ## Illustration: fully working code for the `debug_each` example
 
-<details><summary>Click to see</summary>
+<details class="custom"><summary><span class="summary-box"><span class="summary-to-see">Click to see</span><span class="summary-to-hide">Click to hide</span></span></summary>
 
 ```rust
 #![forbid(unsafe_code)]
@@ -804,7 +804,7 @@ fn main ()
         RefCell::new(Person {
             name: "".into(),
             surname: "Globby".into(),
-            age: 255,
+            age: 0xff,
         }),
     ];
     let elems = &array[..];
