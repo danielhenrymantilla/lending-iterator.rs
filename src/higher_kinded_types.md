@@ -804,7 +804,7 @@ fn main ()
         RefCell::new(Person {
             name: "".into(),
             surname: "Globby".into(),
-            age: 255,
+            age: 0xff,
         }),
     ];
     let elems = &array[..];

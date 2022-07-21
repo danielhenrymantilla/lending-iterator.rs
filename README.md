@@ -145,10 +145,10 @@ fn slice_sort_by_key<Key, Item, KeyGetter> (
 )
 where
     Key : HKT, // "Key : <'_>"
-    for<'any>
-        A!(Key<'any>) : Ord
+    KeyGetter : for<'item> FnMut(&'item Item) -> A!(Key<'item>),
+    for<'item>
+        A!(Key<'item>) : Ord
     ,
-    KeyGetter : FnMut(&Item) -> A!(Key<'_>),
 {
     slice.sort_by(|a, b| Ord::cmp(
         &get_key(a),
@@ -160,7 +160,8 @@ where
 
 struct Client { key: String, version: u8 }
 
-fn main() {
+fn main ()
+{
     let clients: &mut [Client] = &mut [];
 
     // Error: cannot infer an appropriate lifetime for autoref due to conflicting requirements
