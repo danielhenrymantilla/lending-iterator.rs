@@ -130,7 +130,7 @@ type Item<'lt, I : LendingIterator> =
 ///
 /// The core definition of this trait is thus:
 ///
-/**  - ```rust
+/**  - ```rust ,ignore
     #![feature(generic_associated_types)]
 
     trait LendingIterator {
