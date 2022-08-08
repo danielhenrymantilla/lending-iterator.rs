@@ -46,7 +46,7 @@ ui-tests = [
 extension-traits.version = "1.0.1"
 macro_rules_attribute.version = "0.1.2"
 never-say-never.version = "6.6.666"
-nougat.version = "0.2.1"
+nougat.version = "0.2.4"
 polonius-the-crab.version = "0.2.1"
 
 futures.optional = true

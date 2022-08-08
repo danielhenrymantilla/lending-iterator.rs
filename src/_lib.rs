@@ -33,7 +33,7 @@ pub use self::{
 
 /// <code>[#\[::nougat::gat\]]</code>
 ///
-/// [#\[::nougat::gat\]]: https://docs.rs/nougat/*/nougat/attr.gat.html
+/// [#\[::nougat::gat\]]: https://docs.rs/nougat/~0.2.4/nougat/attr.gat.html
 ///
 /// Using this attribute is needed when implementing `LendingIterator` for your
 /// own types, as well as **for reëxporting the `LendingIterator` trait**,
@@ -43,6 +43,83 @@ pub use self::{
 ///   - See the documentation of <code>[#\[::nougat::gat\]]</code> for more info
 ///     about this.
 pub use ::nou::gat;
+
+/// <code>[#\[::macro_rules_attribute::apply\]]</code>
+///
+/// [#\[::macro_rules_attribute::apply\]]: https://docs.rs/macro_rules_attribute/~0.1.2/macro_rules_attribute/attr.apply.html
+///
+/// Using this in conjunction with [`Gat!`] to get access to expressing
+/// `LendingIterator<Item<…> = …>` kind of trait bounds on the annotated item.
+///
+///   - See the documentation of
+///     <code>[#\[::macro_rules_attribute::apply\]]</code> for more info
+///     about this.
+pub use ::macro_rules_attribute::apply;
+
+/// <code>[::nougat::Gat!]</code>
+///
+/// [::nougat::Gat!]: https://docs.rs/nougat/~0.2.4/nougat/macro.Gat.html
+///
+/// You can use this macro around a type to get access to:
+///
+///   - `<I as LendingIterator>::Item<'lt>` (if for some reason you did not
+///     like <code>[Item]\<\'lt, I\></code>);
+///
+///   - `impl for<'n> LendingIterator<Item<'n> = …>`.
+///
+/// [Item]: crate::lending_iterator::Item
+///
+/// You can also use it in conjunction with <code>#\[[apply]\]</code>, as in
+/// <code>#\[[apply]\([Gat!]\)\]</code>, to annotate an item with it so as to:
+///
+///   - get the previous functionality applied to all types occurrences in that
+///     annotated item;
+///
+///   - get `LendingIterator<Item<'…> = …>` kind of trait bounds (_e.g._, as a
+///     in `I : …` clauses, or as a super trait) to also work anywhere on the
+///     annotated item (this is something no _targeted_ macro could ever
+///     support, due to language limitations).
+///
+/// ## Example
+///
+/**  - ```rust
+    use ::lending_iterator::prelude::*;
+
+    #[apply(Gat!)]
+    fn my_iter_1<T> (slice: &'_ mut [T])
+      -> impl '_ + for<'n> LendingIterator<Item<'n> = &'n mut [T; 2]>
+    {
+        windows_mut::<T, 2>(slice)
+    }
+    // same as:
+    fn my_iter_2<T> (slice: &'_ mut [T])
+      -> Gat!(impl '_ + for<'n> LendingIterator<Item<'n> = &'n mut [T; 2]>)
+    {
+        windows_mut::<T, 2>(slice)
+    }
+
+    #[apply(Gat!)]
+    fn print_all<I, T> (mut iter: I)
+    where
+        T : ::core::fmt::Debug,
+        // Trait bound on GAT
+        for<'n>
+            <I as LendingIterator>::Item<'n> : Send
+        ,
+        // Equality constraint on GAT
+        I : for<'n> LendingIterator<Item<'n> = &'n mut [T; 2]>,
+    {
+        iter.for_each(|&mut [ref x, ref y]| {
+            dbg!(x, y);
+        });
+    }
+    ``` */
+///
+/// ___
+///
+///   - See the documentation of <code>[::nougat::Gat!]</code> for more info
+///     about this.
+pub use ::nou::Gat;
 
 #[doc(inline)]
 #[apply(cfg_futures)]

@@ -1,15 +1,7 @@
 #[doc(no_inline)]
 pub use {
     crate::{
-        lending_iterator::{
-            constructors::{
-                into_lending_iter as _,
-                windows_mut as _,
-            },
-            Item,
-            LendingIteratorDyn,
-        },
-        gat,
+        apply, gat, Gat,
         higher_kinded_types::{
             Apply,
             CanonicalHKT,
@@ -18,6 +10,14 @@ pub use {
             HKTItem,
             HKTRef,
             HKTRefMut,
+        },
+        lending_iterator::{
+            constructors::{
+                into_lending_iter as _,
+                windows_mut as _,
+            },
+            Item,
+            LendingIteratorDyn,
         },
         windows_mut,
     },
