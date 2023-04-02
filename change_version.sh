@@ -3,6 +3,7 @@
 set -euxo pipefail
 
 find . \
+    -not -path './target/*' \
     -type f \
     -name 'Cargo.toml' \
     -print \
