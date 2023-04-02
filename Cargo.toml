@@ -38,6 +38,8 @@ better-docs = [ # allowed to break MSRV
     "macro-vis",
 ]
 
+testing = []
+
 ui-tests = [
     "better-docs",
 ]
@@ -59,6 +61,8 @@ path = "src/proc_macros"
 version = "0.1.6"  # Keep in sync
 
 [dev-dependencies]
+lending-iterator.path = "."
+lending-iterator.features = ["testing"]
 
 [workspace]
 members = [

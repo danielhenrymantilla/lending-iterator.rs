@@ -126,6 +126,7 @@ version = "0.1.6"
 dependencies = [
  "extension-traits",
  "futures",
+ "lending-iterator",
  "lending-iterator-proc_macros",
  "macro-vis",
  "macro_rules_attribute",

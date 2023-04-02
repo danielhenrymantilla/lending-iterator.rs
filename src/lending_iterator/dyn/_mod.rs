@@ -207,5 +207,5 @@ macro_rules! with_auto_traits {( $($rules:tt)* ) => (
     __emit__! { Send + Sync }
 )} pub(in crate) use with_auto_traits;
 
-#[cfg(any(doc, test))]
+#[cfg(feature = "testing")]
 mod tests;

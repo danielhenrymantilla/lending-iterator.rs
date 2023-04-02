@@ -1,4 +1,3 @@
-#![allow(unused)]
 use {
     ::alloc::{
         boxed::Box,
@@ -7,11 +6,10 @@ use {
         self as lending_iterator,
         prelude::*,
     },
-    self::CanonicalHKT as Eta,
 };
 
 // Check `dyn`-unification when dealing with a non-generic way of lending.
-fn check<'r, T> (slice: &'r mut [T])
+fn _check<'r, T> (slice: &'r mut [T])
   -> Box<dyn 'r + LendingIteratorDyn<Item = HKT!(&mut [T; 1])>>
 {
     if true {
@@ -29,14 +27,14 @@ fn check<'r, T> (slice: &'r mut [T])
     }
 }
 
-fn f2<'I, I : 'I + LendingIterator + Send, Item : HKT> (i: I)
+fn _check2<'I, I : 'I + LendingIterator + Send, Item : HKT> (i: I)
 where
     I : LendingIteratorDyn<Item = CanonicalHKT<Item>>,
     // for<'any>
     //     I : LendingIteratorඞItem<'any, T = A!(Item<'any>)>
     // ,
 {
-    let mut i: Box<dyn
+    let i: Box<dyn
         'I + Send
         + LendingIteratorDyn<Item = CanonicalHKT<Item>>
     > =
