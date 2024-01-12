@@ -58,8 +58,8 @@ for
     }
 
     #[inline]
-    fn nth<'a> (
-        self: &'a mut WindowsMut<&'lt mut [T], WINDOW_SIZE>,
+    fn nth<'nth> (
+        self: &'nth mut WindowsMut<&'lt mut [T], WINDOW_SIZE>,
         n: usize,
     ) -> Option<&'a mut [T;  WINDOW_SIZE]>
     {
