@@ -61,7 +61,7 @@ for
     fn nth<'nth> (
         self: &'nth mut WindowsMut<&'lt mut [T], WINDOW_SIZE>,
         n: usize,
-    ) -> Option<&'a mut [T;  WINDOW_SIZE]>
+    ) -> Option<&'nth mut [T;  WINDOW_SIZE]>
     {
         let new_start = self.start.checked_add(n)?;
         let slice =
