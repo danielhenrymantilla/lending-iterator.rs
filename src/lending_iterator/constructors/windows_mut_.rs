@@ -50,9 +50,9 @@ for
         &'next mut [T; WINDOW_SIZE]
     ;
 
-    fn next<'a> (
-        self: &'a mut WindowsMut<&'lt mut [T], WINDOW_SIZE>,
-    ) -> Option<&'a mut [T;  WINDOW_SIZE]>
+    fn next<'next> (
+        self: &'next mut WindowsMut<&'lt mut [T], WINDOW_SIZE>,
+    ) -> Option<&'next mut [T;  WINDOW_SIZE]>
     {
         self.nth(0)
     }
