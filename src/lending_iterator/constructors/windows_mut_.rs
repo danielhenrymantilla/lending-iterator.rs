@@ -50,18 +50,18 @@ for
         &'next mut [T; WINDOW_SIZE]
     ;
 
-    fn next (
-        self: &'_ mut WindowsMut<&'lt mut [T], WINDOW_SIZE>,
-    ) -> Option<&'_ mut [T;  WINDOW_SIZE]>
+    fn next<'a> (
+        self: &'a mut WindowsMut<&'lt mut [T], WINDOW_SIZE>,
+    ) -> Option<&'a mut [T;  WINDOW_SIZE]>
     {
         self.nth(0)
     }
 
     #[inline]
-    fn nth (
-        self: &'_ mut WindowsMut<&'lt mut [T], WINDOW_SIZE>,
+    fn nth<'a> (
+        self: &'a mut WindowsMut<&'lt mut [T], WINDOW_SIZE>,
         n: usize,
-    ) -> Option<&'_ mut [T;  WINDOW_SIZE]>
+    ) -> Option<&'a mut [T;  WINDOW_SIZE]>
     {
         let new_start = self.start.checked_add(n)?;
         let slice =
